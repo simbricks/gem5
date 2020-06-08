@@ -237,8 +237,6 @@ class NSGigE(EtherDevBase):
     BAR0Size = '256B'
     BAR1Size = '4kB'
 
-
-
 class Sinic(EtherDevBase):
     type = 'Sinic'
     cxx_class = 'Sinic::Device'
@@ -277,4 +275,25 @@ class Sinic(EtherDevBase):
     InterruptPin = 0x01
     BAR0Size = '64kB'
 
+class Cosim(EtherDevBase):
+    type = 'Cosim'
+    cxx_class = 'Cosim::Device'
+    cxx_header = "dev/net/cosim_nic.hh"
 
+    VendorID = 0x3927
+    DeviceID = 0x0091
+    Status = 0x0290
+    SubClassCode = 0x00
+    ClassCode = 0x02
+    ProgIF = 0x00
+    BAR0 = 0x00000000
+    BAR1 = 0x00000000
+    BAR2 = 0x00000000
+    BAR3 = 0x00000000
+    BAR4 = 0x00000000
+    BAR5 = 0x00000000
+    MaximumLatency = 0x34
+    MinimumGrant = 0xb0
+    InterruptLine = 0x1e
+    InterruptPin = 0x01
+    BAR0Size = '64kB'
