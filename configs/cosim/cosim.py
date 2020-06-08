@@ -173,6 +173,15 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     connect_busses = X86IntelMPBusHierarchy(bus_id=1,
             subtractive_decode=True, parent_bus=0)
     ext_entries.append(connect_busses)
+    pci_dev2_inta = X86IntelMPIOIntAssignment(
+            interrupt_type = 'INT',
+            polarity = 'ConformPolarity',
+            trigger = 'ConformTrigger',
+            source_bus_id = 0,
+            source_bus_irq = 0 + (2 << 2),
+            dest_io_apic_id = io_apic.id,
+            dest_io_apic_intin = 17)
+    base_entries.append(pci_dev2_inta)
     pci_dev4_inta = X86IntelMPIOIntAssignment(
             interrupt_type = 'INT',
             polarity = 'ConformPolarity',
@@ -387,8 +396,6 @@ bm = [SysConfig(disks=options.disk_image, rootdev=options.root_device,
 np = options.num_cpus
 sys = build_system(np)
 root = Root(full_system=True, system=sys)
-root.ethertap = EtherTap()
-root.ethertap.tap = Parent.system.pc.ethernet.interface
 
 if options.timesync:
     root.time_sync_enable = True

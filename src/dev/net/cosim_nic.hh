@@ -35,6 +35,9 @@ protected:
     Interface *interface;
 
 private:
+    bool nicsim_init(const Params *p);
+
+    int pci_fd;
 };
 
 class Interface : public EtherInt
