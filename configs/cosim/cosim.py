@@ -25,7 +25,8 @@ class PCIPc(Pc):
     ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
                      InterruptLine=15, InterruptPin=1,
                      BAR0=0xC0000000,
-                     uxsocket_path="/tmp/cosim-pci")
+                     uxsocket_path="/tmp/cosim-pci",
+                     shm_path="/dev/shm/dummy_nic_shm")
 
     def attachIO(self, bus, dma_ports = []):
         super(PCIPc, self).attachIO(bus, dma_ports)

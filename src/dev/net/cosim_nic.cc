@@ -1,18 +1,21 @@
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/mman.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <debug/EthernetAll.hh>
 #include <dev/net/cosim_nic.hh>
-#include <dev/net/cosim_pcie_proto.h>
 
 namespace Cosim {
 
 Device::Device(const Params *p)
-    : EtherDevBase(p), interface(nullptr), pciFd(-1)
+    : EtherDevBase(p), interface(nullptr), pciFd(-1),
+    d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
+    h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0)
 {
     this->interface = new Interface(name() + ".int0", this);
-    if (!nicsim_init(p)) {
+    if (!nicsimInit(p)) {
         panic("cosim: failed to initialize cosim");
     }
     DPRINTF(Ethernet, "cosim: device configured\n");
@@ -37,7 +40,6 @@ Device::getPort(const std::string &if_name, PortID idx)
 Tick
 Device::read(PacketPtr pkt)
 {
-    printf("cosim: received read\n");
     DPRINTF(Ethernet, "cosim: receiving read addr %x size %x\n",
             pkt->getAddr(), pkt->getSize());
     pkt->setBadAddress();
@@ -47,7 +49,6 @@ Device::read(PacketPtr pkt)
 Tick
 Device::write(PacketPtr pkt)
 {
-    printf("cosim: received write\n");
     DPRINTF(Ethernet, "cosim: receiving write addr %x size %x\n",
             pkt->getAddr(), pkt->getSize());
     pkt->setBadAddress();
@@ -80,14 +81,18 @@ Device::transferDone()
 }
 
 bool
-Device::nicsim_init(const Params *p)
+Device::nicsimInit(const Params *p)
 {
-    if (!uxsocket_init(p->uxsocket_path.c_str())) {
+    if (!uxsocketInit(p)) {
         return false;
     }
 
     struct cosim_pcie_proto_dev_intro di;
     if (recv(this->pciFd, &di, sizeof(di), 0) != sizeof(di)) {
+        return false;
+    }
+
+    if (!queueCreate(p, di)) {
         return false;
     }
 
@@ -101,7 +106,7 @@ Device::nicsim_init(const Params *p)
 }
 
 bool
-Device::uxsocket_init(const char *path)
+Device::uxsocketInit(const Params *p)
 {
     if ((this->pciFd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         goto error;
@@ -110,7 +115,7 @@ Device::uxsocket_init(const char *path)
     struct sockaddr_un saun;
     memset(&saun, 0, sizeof(saun));
     saun.sun_family = AF_UNIX;
-    memcpy(saun.sun_path, path, strlen(path));
+    memcpy(saun.sun_path, p->uxsocket_path.c_str(), strlen(p->uxsocket_path.c_str()));
 
     if (connect(this->pciFd, (struct sockaddr *)&saun, sizeof(saun)) == -1) {
         goto error;
@@ -126,10 +131,47 @@ error:
 }
 
 bool
+Device::queueCreate(const Params *p,
+                    const struct cosim_pcie_proto_dev_intro &di)
+{
+    int fd = -1;
+    if ((fd = open(p->shm_path.c_str(), O_RDWR)) == -1) {
+        perror("Failed to open shm file");
+        goto error;
+    }
+
+    void *addr;
+    if ((addr = mmap(nullptr, 32 * 1024 * 1024, PROT_READ | PROT_WRITE,
+                     MAP_SHARED | MAP_POPULATE, fd, 0)) == (void *)-1) {
+        perror("mmap failed");
+        goto error;
+    }
+
+    this->d2hQueue = (uint8_t *)addr + di.d2h_offset;
+    this->d2hPos = 0;
+    this->d2hElen = di.d2h_elen;
+    this->d2hEnum = di.d2h_nentries;
+
+    this->h2dQueue = (uint8_t *)addr + di.h2d_offset;
+    this->h2dPos = 0;
+    this->h2dElen = di.h2d_elen;
+    this->h2dEnum = di.h2d_nentries;
+
+    return true;
+
+error:
+    if (fd > 0) {
+        close(fd);
+    }
+    return false;
+}
+
+bool
 Interface::recvPacket(EthPacketPtr pkt)
 {
     return this->dev->recvPacket(pkt);
 }
+
 
 void
 Interface::sendDone()

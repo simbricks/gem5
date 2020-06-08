@@ -4,6 +4,7 @@
 #include <dev/net/etherpkt.hh>
 #include <dev/net/etherdevice.hh>
 #include <dev/net/etherint.hh>
+#include <dev/net/cosim_pcie_proto.h>
 
 namespace Cosim {
 
@@ -35,10 +36,22 @@ protected:
     Interface *interface;
 
 private:
-    bool nicsim_init(const Params *p);
-    bool uxsocket_init(const char *path);
+    bool nicsimInit(const Params *p);
+    bool uxsocketInit(const Params *p);
+    bool queueCreate(const Params *p,
+                     const struct cosim_pcie_proto_dev_intro &di);
 
     int pciFd;
+
+    uint8_t *d2hQueue;
+    size_t d2hPos;
+    size_t d2hElen;
+    size_t d2hEnum;
+
+    uint8_t *h2dQueue;
+    size_t h2dPos;
+    size_t h2dElen;
+    size_t h2dEnum;
 };
 
 class Interface : public EtherInt

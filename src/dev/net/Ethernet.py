@@ -281,6 +281,7 @@ class Cosim(EtherDevBase):
     cxx_header = "dev/net/cosim_nic.hh"
 
     uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("Shared memory path")
 
     VendorID = 0x3927
     DeviceID = 0x0091
