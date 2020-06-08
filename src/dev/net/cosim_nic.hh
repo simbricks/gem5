@@ -36,8 +36,9 @@ protected:
 
 private:
     bool nicsim_init(const Params *p);
+    bool uxsocket_init(const char *path);
 
-    int pci_fd;
+    int pciFd;
 };
 
 class Interface : public EtherInt

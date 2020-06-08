@@ -1,3 +1,7 @@
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
 #include <debug/EthernetAll.hh>
 #include <dev/net/cosim_nic.hh>
 #include <dev/net/cosim_pcie_proto.h>
@@ -5,17 +9,20 @@
 namespace Cosim {
 
 Device::Device(const Params *p)
-    : EtherDevBase(p), interface(nullptr), pci_fd(-1)
+    : EtherDevBase(p), interface(nullptr), pciFd(-1)
 {
-    printf("cosim: initialized\n");
     this->interface = new Interface(name() + ".int0", this);
     if (!nicsim_init(p)) {
         panic("cosim: failed to initialize cosim");
     }
+    DPRINTF(Ethernet, "cosim: device configured\n");
 }
 
 Device::~Device()
 {
+    if (this->pciFd > 0) {
+        close(this->pciFd);
+    }
 }
 
 Port &
@@ -75,24 +82,47 @@ Device::transferDone()
 bool
 Device::nicsim_init(const Params *p)
 {
-    /*
-    if (!uxsocket_init(p->uxsocket_path)) {
+    if (!uxsocket_init(p->uxsocket_path.c_str())) {
         return false;
     }
 
-    struct cosim_pcie_dev_intro di;
-    if (recv(this->pci_fd, &di, sizeof(di), 0) != sizeof(di)) {
+    struct cosim_pcie_proto_dev_intro di;
+    if (recv(this->pciFd, &di, sizeof(di), 0) != sizeof(di)) {
         return false;
     }
 
     struct cosim_pcie_proto_host_intro hi;
     hi.flags = COSIM_PCIE_PROTO_FLAGS_HI_SYNC;
-    if (send(this->pci_fd, &hi, sizeof(hi), 0) != sizeof(hi)) {
+    if (send(this->pciFd, &hi, sizeof(hi), 0) != sizeof(hi)) {
         return false;
     }
-    */
 
     return true;
+}
+
+bool
+Device::uxsocket_init(const char *path)
+{
+    if ((this->pciFd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+        goto error;
+    }
+
+    struct sockaddr_un saun;
+    memset(&saun, 0, sizeof(saun));
+    saun.sun_family = AF_UNIX;
+    memcpy(saun.sun_path, path, strlen(path));
+
+    if (connect(this->pciFd, (struct sockaddr *)&saun, sizeof(saun)) == -1) {
+        goto error;
+    }
+
+    return true;
+
+error:
+    if (this->pciFd > 0) {
+        close(this->pciFd);
+    }
+    return false;
 }
 
 bool

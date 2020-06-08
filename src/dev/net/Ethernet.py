@@ -280,6 +280,8 @@ class Cosim(EtherDevBase):
     cxx_class = 'Cosim::Device'
     cxx_header = "dev/net/cosim_nic.hh"
 
+    uxsocket_path = Param.String("unix socket path")
+
     VendorID = 0x3927
     DeviceID = 0x0091
     Status = 0x0290
