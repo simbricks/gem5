@@ -10,7 +10,7 @@
 namespace Cosim {
 
 Device::Device(const Params *p)
-    : EtherDevBase(p), interface(nullptr), pciFd(-1),
+    : EtherDevBase(p), interface(nullptr), pciFd(-1), reqId(0),
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0)
 {
@@ -42,7 +42,33 @@ Device::read(PacketPtr pkt)
 {
     DPRINTF(Ethernet, "cosim: receiving read addr %x size %x\n",
             pkt->getAddr(), pkt->getSize());
-    pkt->setBadAddress();
+
+    int bar;
+    Addr daddr;
+    if (!getBAR(pkt->getAddr(), bar, daddr)) {
+        panic("Invalid PCI memory address\n");
+    }
+
+    /* Send read message */
+    volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
+    volatile struct cosim_pcie_proto_h2d_read *read = &h2d_msg->read;
+    uint64_t req_id = this->reqId++;
+    read->req_id = req_id;
+    read->offset = daddr;
+    read->len = pkt->getSize();
+    read->bar = bar;
+    read->own_type = COSIM_PCIE_PROTO_H2D_MSG_READ | COSIM_PCIE_PROTO_H2D_OWN_DEV;
+
+    /* Receive read complete message */
+    volatile union cosim_pcie_proto_d2h *d2h_msg = d2hPoll();
+    assert((d2h_msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK)
+            == COSIM_PCIE_PROTO_D2H_MSG_READCOMP);
+    volatile struct cosim_pcie_proto_d2h_readcomp *rc = &d2h_msg->readcomp;
+    assert(rc->req_id == req_id);
+    pkt->setData((const uint8_t *)rc->data);
+    d2hDone(d2h_msg);
+
+    pkt->makeAtomicResponse();
     return 1;
 }
 
@@ -51,7 +77,33 @@ Device::write(PacketPtr pkt)
 {
     DPRINTF(Ethernet, "cosim: receiving write addr %x size %x\n",
             pkt->getAddr(), pkt->getSize());
-    pkt->setBadAddress();
+
+    int bar;
+    Addr daddr;
+    if (!getBAR(pkt->getAddr(), bar, daddr)) {
+        panic("Invalid PCI memory address\n");
+    }
+
+    /* Send write message */
+    volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
+    volatile struct cosim_pcie_proto_h2d_write *write = &h2d_msg->write;
+    uint64_t req_id = this->reqId++;
+    write->req_id = req_id;
+    write->offset = daddr;
+    write->len = pkt->getSize();
+    write->bar = bar;
+    memcpy((void *)write->data, pkt->getPtr<uint8_t>(), pkt->getSize());
+    write->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITE | COSIM_PCIE_PROTO_H2D_OWN_DEV;
+
+    /* Receive write complete message */
+    volatile union cosim_pcie_proto_d2h *d2h_msg = d2hPoll();
+    assert((d2h_msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK)
+            == COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP);
+    volatile struct cosim_pcie_proto_d2h_writecomp *wc = &d2h_msg->writecomp;
+    assert(wc->req_id == req_id);
+    d2hDone(d2h_msg);
+
+    pkt->makeAtomicResponse();
     return 1;
 }
 
@@ -164,6 +216,47 @@ error:
         close(fd);
     }
     return false;
+}
+
+volatile union cosim_pcie_proto_h2d *
+Device::h2dAlloc()
+{
+    volatile union cosim_pcie_proto_h2d *msg =
+        (volatile union cosim_pcie_proto_h2d *)
+        (this->h2dQueue + this->h2dPos * this->h2dElen);
+
+    if ((msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_OWN_MASK) !=
+            COSIM_PCIE_PROTO_H2D_OWN_HOST) {
+        panic("cosim: failed to allocate h2d message\n");
+    }
+
+    this->h2dPos = (this->h2dPos + 1) % this->h2dEnum;
+    return msg;
+}
+
+volatile union cosim_pcie_proto_d2h *
+Device::d2hPoll()
+{
+    volatile union cosim_pcie_proto_d2h *msg;
+
+    while (true) {
+        msg = (volatile union cosim_pcie_proto_d2h *)
+            (this->d2hQueue + this->d2hPos * this->d2hElen);
+        if ((msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_OWN_MASK) ==
+                COSIM_PCIE_PROTO_D2H_OWN_HOST) {
+            break;
+        }
+    }
+
+    return msg;
+}
+
+void
+Device::d2hDone(volatile union cosim_pcie_proto_d2h *msg)
+{
+    msg->dummy.own_type = (msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK) |
+        COSIM_PCIE_PROTO_D2H_OWN_DEV;
+    this->d2hPos = (this->d2hPos + 1) % this->d2hEnum;
 }
 
 bool
