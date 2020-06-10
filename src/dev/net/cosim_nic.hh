@@ -38,6 +38,11 @@ protected:
     Interface *interface;
 
 private:
+    bool h2dDone;
+    PacketPtr h2dPacket;
+    uint64_t h2dId;
+
+    void pollQueues();
     bool nicsimInit(const Params *p);
     bool uxsocketInit(const Params *p);
     bool queueCreate(const Params *p,

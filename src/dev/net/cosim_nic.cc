@@ -12,7 +12,8 @@ namespace Cosim {
 static const int DEFAULT_POLL_INTERVAL = 1000;
 
 Device::Device(const Params *p)
-    : EtherDevBase(p), interface(nullptr), pciFd(-1), reqId(0),
+    : EtherDevBase(p), interface(nullptr), h2dDone(false), h2dPacket(0),
+    pciFd(-1), reqId(0),
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
     pollEvent([this]{processPollEvent();}, name()),
@@ -44,6 +45,8 @@ Device::getPort(const std::string &if_name, PortID idx)
 Tick
 Device::read(PacketPtr pkt)
 {
+    uint64_t req_id = this->reqId++;
+
     DPRINTF(Ethernet, "cosim: receiving read addr %x size %x\n",
             pkt->getAddr(), pkt->getSize());
 
@@ -53,32 +56,34 @@ Device::read(PacketPtr pkt)
         panic("Invalid PCI memory address\n");
     }
 
+    assert(h2dPacket == 0);
+    h2dDone = false;
+    h2dPacket = pkt;
+    h2dId = req_id;
+
     /* Send read message */
     volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
     volatile struct cosim_pcie_proto_h2d_read *read = &h2d_msg->read;
-    uint64_t req_id = this->reqId++;
     read->req_id = req_id;
     read->offset = daddr;
     read->len = pkt->getSize();
     read->bar = bar;
     read->own_type = COSIM_PCIE_PROTO_H2D_MSG_READ | COSIM_PCIE_PROTO_H2D_OWN_DEV;
 
-    /* Receive read complete message */
-    volatile union cosim_pcie_proto_d2h *d2h_msg = d2hPoll();
-    assert((d2h_msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK)
-            == COSIM_PCIE_PROTO_D2H_MSG_READCOMP);
-    volatile struct cosim_pcie_proto_d2h_readcomp *rc = &d2h_msg->readcomp;
-    assert(rc->req_id == req_id);
-    pkt->setData((const uint8_t *)rc->data);
-    d2hDone(d2h_msg);
+    /* wait for operation to complete */
+    while (!h2dDone)
+        pollQueues();
 
     pkt->makeAtomicResponse();
+    h2dPacket = 0;
     return 1;
 }
 
 Tick
 Device::write(PacketPtr pkt)
 {
+    uint64_t req_id = this->reqId++;
+
     DPRINTF(Ethernet, "cosim: receiving write addr %x size %x\n",
             pkt->getAddr(), pkt->getSize());
 
@@ -88,10 +93,14 @@ Device::write(PacketPtr pkt)
         panic("Invalid PCI memory address\n");
     }
 
+    assert(h2dPacket == 0);
+    h2dDone = false;
+    h2dPacket = pkt;
+    h2dId = req_id;
+
     /* Send write message */
     volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
     volatile struct cosim_pcie_proto_h2d_write *write = &h2d_msg->write;
-    uint64_t req_id = this->reqId++;
     write->req_id = req_id;
     write->offset = daddr;
     write->len = pkt->getSize();
@@ -99,16 +108,49 @@ Device::write(PacketPtr pkt)
     memcpy((void *)write->data, pkt->getPtr<uint8_t>(), pkt->getSize());
     write->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITE | COSIM_PCIE_PROTO_H2D_OWN_DEV;
 
-    /* Receive write complete message */
-    volatile union cosim_pcie_proto_d2h *d2h_msg = d2hPoll();
-    assert((d2h_msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK)
-            == COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP);
-    volatile struct cosim_pcie_proto_d2h_writecomp *wc = &d2h_msg->writecomp;
-    assert(wc->req_id == req_id);
-    d2hDone(d2h_msg);
+    /* wait for operation to complete */
+    while (!h2dDone)
+        pollQueues();
 
     pkt->makeAtomicResponse();
+    h2dPacket = 0;
     return 1;
+}
+
+void
+Device::pollQueues()
+{
+    volatile struct cosim_pcie_proto_d2h_readcomp *rc;
+    volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+    volatile union cosim_pcie_proto_d2h *msg;
+    uint8_t ty;
+
+    msg = d2hPoll();
+    if (!msg)
+        return;
+
+    ty = msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK;
+    switch (ty) {
+        case COSIM_PCIE_PROTO_D2H_MSG_READCOMP:
+            /* Receive read complete message */
+            rc = &msg->readcomp;
+            assert(rc->req_id == h2dId);
+            h2dPacket->setData((const uint8_t *) rc->data);
+            h2dDone = true;
+            break;
+
+        case COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP:
+            /* Receive write complete message */
+            wc = &msg->writecomp;
+            assert(wc->req_id == h2dId);
+            h2dDone = true;
+            break;
+
+        default:
+            panic("Cosim::pollQueues: unsupported type=%x", ty);
+    }
+
+    d2hDone(msg);
 }
 
 void
@@ -249,13 +291,11 @@ Device::d2hPoll()
 {
     volatile union cosim_pcie_proto_d2h *msg;
 
-    while (true) {
-        msg = (volatile union cosim_pcie_proto_d2h *)
-            (this->d2hQueue + this->d2hPos * this->d2hElen);
-        if ((msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_OWN_MASK) ==
-                COSIM_PCIE_PROTO_D2H_OWN_HOST) {
-            break;
-        }
+    msg = (volatile union cosim_pcie_proto_d2h *)
+        (this->d2hQueue + this->d2hPos * this->d2hElen);
+    if ((msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_OWN_MASK) ==
+            COSIM_PCIE_PROTO_D2H_OWN_DEV) {
+        return 0;
     }
 
     return msg;
