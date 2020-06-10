@@ -29,6 +29,8 @@ public:
     virtual void serialize(CheckpointOut &cp) const override;
     virtual void unserialize(CheckpointIn &cp) override;
 
+    virtual void startup() override;
+
     bool recvPacket(EthPacketPtr pkt);
     void transferDone();
 
@@ -43,6 +45,7 @@ private:
     volatile union cosim_pcie_proto_h2d *h2dAlloc();
     volatile union cosim_pcie_proto_d2h *d2hPoll();
     void d2hDone(volatile union cosim_pcie_proto_d2h *msg);
+    void processPollEvent();
 
     int pciFd;
     uint64_t reqId;
@@ -56,6 +59,9 @@ private:
     size_t h2dPos;
     size_t h2dElen;
     size_t h2dEnum;
+
+    EventFunctionWrapper pollEvent;
+    int pollInterval;
 };
 
 class Interface : public EtherInt

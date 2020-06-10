@@ -9,10 +9,14 @@
 
 namespace Cosim {
 
+static const int DEFAULT_POLL_INTERVAL = 1000;
+
 Device::Device(const Params *p)
     : EtherDevBase(p), interface(nullptr), pciFd(-1), reqId(0),
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
-    h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0)
+    h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
+    pollEvent([this]{processPollEvent();}, name()),
+    pollInterval(DEFAULT_POLL_INTERVAL)
 {
     this->interface = new Interface(name() + ".int0", this);
     if (!nicsimInit(p)) {
@@ -117,6 +121,12 @@ void
 Device::unserialize(CheckpointIn &cp)
 {
     PciDevice::unserialize(cp);
+}
+
+void
+Device::startup()
+{
+    schedule(this->pollEvent, this->pollInterval);
 }
 
 bool
@@ -259,12 +269,18 @@ Device::d2hDone(volatile union cosim_pcie_proto_d2h *msg)
     this->d2hPos = (this->d2hPos + 1) % this->d2hEnum;
 }
 
+void
+Device::processPollEvent()
+{
+    DPRINTF(Ethernet, "cosim: poll event\n");
+    //schedule(this->pollEvent, curTick() + this->pollInterval);
+}
+
 bool
 Interface::recvPacket(EthPacketPtr pkt)
 {
     return this->dev->recvPacket(pkt);
 }
-
 
 void
 Interface::sendDone()
