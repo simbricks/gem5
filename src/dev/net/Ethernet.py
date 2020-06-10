@@ -283,8 +283,8 @@ class Cosim(EtherDevBase):
     uxsocket_path = Param.String("unix socket path")
     shm_path = Param.String("Shared memory path")
 
-    VendorID = 0x3927
-    DeviceID = 0x0091
+    VendorID = 0x5543
+    DeviceID = 0x1001
     Status = 0x0290
     SubClassCode = 0x00
     ClassCode = 0x02
@@ -299,4 +299,4 @@ class Cosim(EtherDevBase):
     MinimumGrant = 0xb0
     InterruptLine = 0x1e
     InterruptPin = 0x01
-    BAR0Size = '64kB'
+    BAR0Size = '32MB'
