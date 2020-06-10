@@ -9,7 +9,7 @@
 
 namespace Cosim {
 
-static const int DEFAULT_POLL_INTERVAL = 1000;
+static const int DEFAULT_POLL_INTERVAL = 100000000;
 
 Device::Device(const Params *p)
     : EtherDevBase(p), interface(nullptr), h2dDone(false), h2dPacket(0),
@@ -160,7 +160,7 @@ Device::dmaDone(DMACompl &comp)
     }
 }
 
-void
+bool
 Device::pollQueues()
 {
     volatile struct cosim_pcie_proto_d2h_read *read;
@@ -174,7 +174,7 @@ Device::pollQueues()
 
     msg = d2hPoll();
     if (!msg)
-        return;
+        return false;
 
     ty = msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK;
     switch (ty) {
@@ -232,6 +232,7 @@ Device::pollQueues()
     }
 
     d2hDone(msg);
+    return true;
 }
 
 void
@@ -393,8 +394,10 @@ Device::d2hDone(volatile union cosim_pcie_proto_d2h *msg)
 void
 Device::processPollEvent()
 {
-    DPRINTF(Ethernet, "cosim: poll event\n");
-    //schedule(this->pollEvent, curTick() + this->pollInterval);
+    //DPRINTF(Ethernet, "cosim: poll event: %u\n", curTick());
+    while (pollQueues());
+
+    schedule(this->pollEvent, curTick() + this->pollInterval);
 }
 
 bool

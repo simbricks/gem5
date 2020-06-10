@@ -61,7 +61,7 @@ private:
     uint64_t h2dId;
 
     void dmaDone(DMACompl &comp);
-    void pollQueues();
+    bool pollQueues();
     bool nicsimInit(const Params *p);
     bool uxsocketInit(const Params *p);
     bool queueCreate(const Params *p,
