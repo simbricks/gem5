@@ -38,10 +38,29 @@ protected:
     Interface *interface;
 
 private:
+    friend class DMACompl;
+    class DMACompl : public EventFunctionWrapper
+    {
+        protected:
+            Device *dev;
+
+            void done();
+        public:
+            uint64_t id;
+            bool write;
+            uint8_t *buf;
+            size_t bufsiz;
+
+            DMACompl(Device *dev_, uint64_t id_, size_t bufsiz_, bool write_,
+                    const std::string &name);
+            ~DMACompl();
+    };
+
     bool h2dDone;
     PacketPtr h2dPacket;
     uint64_t h2dId;
 
+    void dmaDone(DMACompl &comp);
     void pollQueues();
     bool nicsimInit(const Params *p);
     bool uxsocketInit(const Params *p);

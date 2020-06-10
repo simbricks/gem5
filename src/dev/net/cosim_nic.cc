@@ -117,12 +117,59 @@ Device::write(PacketPtr pkt)
     return 1;
 }
 
+Device::DMACompl::DMACompl(Device *dev_, uint64_t id_, size_t bufsiz_,
+        bool write_, const std::string &name_)
+    : EventFunctionWrapper([this]{ done(); }, name_, true), dev(dev_), id(id_),
+    write(write_), buf(new uint8_t[bufsiz_]), bufsiz(bufsiz_)
+{
+}
+
+Device::DMACompl::~DMACompl()
+{
+    delete[] buf;
+}
+
+void
+Device::DMACompl::done()
+{
+    dev->dmaDone(*this);
+}
+
+void
+Device::dmaDone(DMACompl &comp)
+{
+    volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
+    volatile struct cosim_pcie_proto_h2d_readcomp *rc;
+    volatile struct cosim_pcie_proto_h2d_writecomp *wc;
+
+    DPRINTF(Ethernet, "cosim: completed DMA id %u\n", comp.id);
+
+    if (!comp.write) {
+        /* read completion */
+        rc = &msg->readcomp;
+        rc->req_id = comp.id;
+        memcpy((void *) rc->data, comp.buf, comp.bufsiz);
+        rc->own_type = COSIM_PCIE_PROTO_H2D_MSG_READCOMP |
+            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    } else {
+        /* write completion */
+        wc = &msg->writecomp;
+        wc->req_id = comp.id;
+        wc->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP |
+            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    }
+}
+
 void
 Device::pollQueues()
 {
+    volatile struct cosim_pcie_proto_d2h_read *read;
+    volatile struct cosim_pcie_proto_d2h_write *write;
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
     volatile struct cosim_pcie_proto_d2h_writecomp *wc;
     volatile union cosim_pcie_proto_d2h *msg;
+    DMACompl *dc;
+    uint64_t rid, addr, len;
     uint8_t ty;
 
     msg = d2hPoll();
@@ -131,6 +178,40 @@ Device::pollQueues()
 
     ty = msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK;
     switch (ty) {
+        case COSIM_PCIE_PROTO_D2H_MSG_READ:
+            /* Read */
+            read = &msg->read;
+
+            rid = read->req_id;
+            addr = read->offset;
+            len = read->len;
+            DPRINTF(Ethernet, "cosim: received DMA read id %u addr %x "
+                    "size %x\n", rid, addr, len);
+
+            dc = new DMACompl(this, rid, len, false, name());
+            dmaRead(pciToDma(addr), len, dc, dc->buf, 0);
+            break;
+
+        case COSIM_PCIE_PROTO_D2H_MSG_WRITE:
+            /* Write */
+            write = &msg->write;
+
+            rid = write->req_id;
+            addr = write->offset;
+            len = write->len;
+            DPRINTF(Ethernet, "cosim: received DMA write id %u addr %x "
+                    "size %x\n", rid, addr, len);
+
+            dc = new DMACompl(this, rid, len, true, name());
+            memcpy(dc->buf, (void *) write->data, len);
+            dmaWrite(pciToDma(addr), len, dc, dc->buf, 0);
+            break;
+
+        case COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT:
+            /* Interrupt */
+            warn("Cosim::pollQueues: TODO: interrupt");
+            break;
+
         case COSIM_PCIE_PROTO_D2H_MSG_READCOMP:
             /* Receive read complete message */
             rc = &msg->readcomp;
