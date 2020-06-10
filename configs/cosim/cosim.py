@@ -25,6 +25,8 @@ class PCIPc(Pc):
     ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
                      InterruptLine=15, InterruptPin=1,
                      BAR0=0xC0000000,
+                     MSICAPCapId=0x5,
+                     MSICAPMsgCtrl=0x8a,
                      uxsocket_path="/tmp/cosim-pci",
                      shm_path="/dev/shm/dummy_nic_shm")
 

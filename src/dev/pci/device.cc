@@ -210,6 +210,16 @@ PciDevice::PciDevice(const PciDeviceParams *p)
             }
         }
     }
+
+    if (msicap.mc != 0) {
+        uint8_t cap_off = offsetof(PCIConfig, maximumLatency) + 1;
+
+        config.capabilityPtr = cap_off;
+        memcpy(config.data + cap_off, &msicap, sizeof(msicap));
+
+        caps_start = cap_off;
+        caps_end = cap_off + sizeof(msicap);
+    }
 }
 
 Tick
@@ -217,6 +227,7 @@ PciDevice::readConfig(PacketPtr pkt)
 {
     int offset = pkt->getAddr() & PCI_CONFIG_SIZE;
 
+#if 0
     /* Return 0 for accesses to unimplemented PCI configspace areas */
     if (offset >= PCI_DEVICE_SPECIFIC &&
         offset < PCI_CONFIG_SIZE) {
@@ -236,6 +247,10 @@ PciDevice::readConfig(PacketPtr pkt)
                 panic("invalid access size(?) for PCI configspace!\n");
         }
     } else if (offset > PCI_CONFIG_SIZE) {
+        panic("Out-of-range access to PCI config space!\n");
+    }
+#endif
+    if (offset > PCI_CONFIG_SIZE) {
         panic("Out-of-range access to PCI config space!\n");
     }
 
@@ -285,6 +300,7 @@ PciDevice::writeConfig(PacketPtr pkt)
 {
     int offset = pkt->getAddr() & PCI_CONFIG_SIZE;
 
+#if 0
     /* No effect if we write to config space that is not implemented*/
     if (offset >= PCI_DEVICE_SPECIFIC &&
         offset < PCI_CONFIG_SIZE) {
@@ -298,8 +314,28 @@ PciDevice::writeConfig(PacketPtr pkt)
             default:
                 panic("invalid access size(?) for PCI configspace!\n");
         }
-    } else if (offset > PCI_CONFIG_SIZE) {
+    } else
+#endif
+    if (offset > PCI_CONFIG_SIZE) {
         panic("Out-of-range access to PCI config space!\n");
+    }
+
+    if (offset >= caps_start && offset < caps_end) {
+        switch (pkt->getSize()) {
+          case sizeof(uint8_t):
+            config.data[offset] = pkt->getLE<uint8_t>();
+            break;
+          case sizeof(uint16_t):
+            *(uint16_t *) &config.data[offset] = pkt->getLE<uint16_t>();
+            break;
+          case sizeof(uint32_t):
+            *(uint32_t *) &config.data[offset] = pkt->getLE<uint32_t>();
+            break;
+          default:
+            panic("invalid access size(?) for PCI configspace!\n");
+        }
+        pkt->makeAtomicResponse();
+        return configDelay;
     }
 
     switch (pkt->getSize()) {
@@ -322,7 +358,7 @@ PciDevice::writeConfig(PacketPtr pkt)
           case PCI_REVISION_ID:
             break;
           default:
-            panic("writing to a read only register");
+            warn("writing to a read only register: %x", offset);
         }
         DPRINTF(PciDevice,
             "writeConfig: dev %#x func %#x reg %#x 1 bytes: data = %#x\n",
@@ -341,7 +377,7 @@ PciDevice::writeConfig(PacketPtr pkt)
             config.cacheLineSize = pkt->getLE<uint8_t>();
             break;
           default:
-            panic("writing to a read only register");
+            panic("writing to a read only register: %x", offset);
         }
         DPRINTF(PciDevice,
             "writeConfig: dev %#x func %#x reg %#x 2 bytes: data = %#x\n",

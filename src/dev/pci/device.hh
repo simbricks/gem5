@@ -74,6 +74,9 @@ class PciDevice : public DmaDevice
     /** The capability list structures and base addresses
      * @{
      */
+    int caps_start;
+    int caps_end;
+
     const int PMCAP_BASE;
     const int PMCAP_ID_OFFSET;
     const int PMCAP_PC_OFFSET;

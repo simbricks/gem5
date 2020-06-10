@@ -51,7 +51,7 @@
 #include "base/bitunion.hh"
 
 union PCIConfig {
-    uint8_t data[64];
+    uint8_t data[256];
 
     struct {
         uint16_t vendor;
