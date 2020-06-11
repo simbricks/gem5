@@ -118,9 +118,9 @@ Device::write(PacketPtr pkt)
 }
 
 Device::DMACompl::DMACompl(Device *dev_, uint64_t id_, size_t bufsiz_,
-        bool write_, const std::string &name_)
+        enum ctype ty_, const std::string &name_)
     : EventFunctionWrapper([this]{ done(); }, name_, true), dev(dev_), id(id_),
-    write(write_), buf(new uint8_t[bufsiz_]), bufsiz(bufsiz_)
+    ty(ty_), buf(new uint8_t[bufsiz_]), bufsiz(bufsiz_)
 {
 }
 
@@ -144,19 +144,23 @@ Device::dmaDone(DMACompl &comp)
 
     DPRINTF(Ethernet, "cosim: completed DMA id %u\n", comp.id);
 
-    if (!comp.write) {
+    if (comp.ty == DMACompl::READ) {
         /* read completion */
         rc = &msg->readcomp;
         rc->req_id = comp.id;
         memcpy((void *) rc->data, comp.buf, comp.bufsiz);
         rc->own_type = COSIM_PCIE_PROTO_H2D_MSG_READCOMP |
             COSIM_PCIE_PROTO_H2D_OWN_DEV;
-    } else {
+    } else if (comp.ty == DMACompl::WRITE) {
         /* write completion */
         wc = &msg->writecomp;
         wc->req_id = comp.id;
         wc->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP |
             COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    } else if (comp.ty == DMACompl::MSI) {
+        /* MSI interrupt */
+    } else {
+        panic("cosim: invalid completion");
     }
 }
 
@@ -167,6 +171,7 @@ Device::pollQueues()
     volatile struct cosim_pcie_proto_d2h_write *write;
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
     volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+    volatile struct cosim_pcie_proto_d2h_interrupt *intr;
     volatile union cosim_pcie_proto_d2h *msg;
     DMACompl *dc;
     uint64_t rid, addr, len;
@@ -188,7 +193,7 @@ Device::pollQueues()
             DPRINTF(Ethernet, "cosim: received DMA read id %u addr %x "
                     "size %x\n", rid, addr, len);
 
-            dc = new DMACompl(this, rid, len, false, name());
+            dc = new DMACompl(this, rid, len, DMACompl::READ, name());
             dmaRead(pciToDma(addr), len, dc, dc->buf, 0);
             break;
 
@@ -202,14 +207,31 @@ Device::pollQueues()
             DPRINTF(Ethernet, "cosim: received DMA write id %u addr %x "
                     "size %x\n", rid, addr, len);
 
-            dc = new DMACompl(this, rid, len, true, name());
+            dc = new DMACompl(this, rid, len, DMACompl::WRITE, name());
             memcpy(dc->buf, (void *) write->data, len);
             dmaWrite(pciToDma(addr), len, dc, dc->buf, 0);
             break;
 
         case COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT:
             /* Interrupt */
-            warn("Cosim::pollQueues: TODO: interrupt");
+            intr = &msg->interrupt;
+            assert(intr->inttype == COSIM_PCIE_PROTO_INT_MSI);
+            assert(intr->vector < 32);
+
+            if ((msicap.mc & 0x1) != 0 &&
+                    ((msicap.mmask & (1 << intr->vector)) == 0))
+            {
+                DPRINTF(Ethernet, "cosim: MSI addr=%x val=%x mask=%x\n",
+                        msicap.ma, msicap.md, msicap.mmask);
+                dc = new DMACompl(this, rid, 4, DMACompl::MSI, name());
+                memcpy(dc->buf, &msicap.md, 2);
+                memset(dc->buf + 2, 0, 2);
+
+                dmaWrite(pciToDma(msicap.ma | ((uint64_t) msicap.mua << 32)),
+                        4, dc, dc->buf, 0);
+            } else {
+                DPRINTF(Ethernet, "cosim: MSI masked\n");
+            }
             break;
 
         case COSIM_PCIE_PROTO_D2H_MSG_READCOMP:

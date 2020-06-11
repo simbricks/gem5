@@ -47,11 +47,15 @@ private:
             void done();
         public:
             uint64_t id;
-            bool write;
+            enum ctype {
+                READ,
+                WRITE,
+                MSI
+            } ty;
             uint8_t *buf;
             size_t bufsiz;
 
-            DMACompl(Device *dev_, uint64_t id_, size_t bufsiz_, bool write_,
+            DMACompl(Device *dev_, uint64_t id_, size_t bufsiz_, enum ctype ty_,
                     const std::string &name);
             ~DMACompl();
     };
