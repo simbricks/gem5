@@ -138,13 +138,11 @@ Device::DMACompl::done()
 void
 Device::dmaDone(DMACompl &comp)
 {
-    volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
-    volatile struct cosim_pcie_proto_h2d_readcomp *rc;
-    volatile struct cosim_pcie_proto_h2d_writecomp *wc;
-
     DPRINTF(Ethernet, "cosim: completed DMA id %u\n", comp.id);
 
     if (comp.ty == DMACompl::READ) {
+        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
+        volatile struct cosim_pcie_proto_h2d_readcomp *rc;
         /* read completion */
         rc = &msg->readcomp;
         rc->req_id = comp.id;
@@ -152,6 +150,8 @@ Device::dmaDone(DMACompl &comp)
         rc->own_type = COSIM_PCIE_PROTO_H2D_MSG_READCOMP |
             COSIM_PCIE_PROTO_H2D_OWN_DEV;
     } else if (comp.ty == DMACompl::WRITE) {
+        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
+        volatile struct cosim_pcie_proto_h2d_writecomp *wc;
         /* write completion */
         wc = &msg->writecomp;
         wc->req_id = comp.id;
