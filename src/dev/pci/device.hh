@@ -169,6 +169,12 @@ class PciDevice : public DmaDevice
         return true;
     }
 
+    void readConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+            const uint8_t *basePtr, size_t len);
+
+    void writeConfigBytes(PacketPtr pkt, int off, int baseOff,
+            uint8_t *base_ptr, size_t len);
+
   public: // Host configuration interface
     /**
      * Write to the PCI config space data that is stored locally. This may be

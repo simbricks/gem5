@@ -1,6 +1,4 @@
-# -*- mode:python -*-
-
-# Copyright (c) 2006 The Regents of The University of Michigan
+# Copyright (c) 2008 The Regents of The University of Michigan
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,43 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Import('*')
+from m5.params import *
+from m5.proxy import *
+from m5.objects.Device import BasicPioDevice
+from m5.objects.IntPin import VectorIntSinkPin
 
-if env['TARGET_ISA'] == 'x86':
-    SimObject('Pc.py')
-    Source('pc.cc')
-
-    SimObject('SouthBridge.py')
-    Source('south_bridge.cc')
-
-    SimObject('Cmos.py')
-    Source('cmos.cc')
-    DebugFlag('CMOS', 'Accesses to CMOS devices')
-
-    SimObject('I8259.py')
-    Source('i8259.cc')
-    DebugFlag('I8259', 'Accesses to the I8259 PIC devices')
-
-    SimObject('I8254.py')
-    Source('i8254.cc')
-    DebugFlag('I8254', 'Interrupts from the I8254 timer');
-
-    SimObject('I8237.py')
-    Source('i8237.cc')
-    DebugFlag('I8237', 'The I8237 dma controller');
-
-    SimObject('I8042.py')
-    Source('i8042.cc')
-    DebugFlag('I8042', 'The I8042 keyboard controller');
-
-    SimObject('PcSpeaker.py')
-    Source('speaker.cc')
-    DebugFlag('PcSpeaker')
-
-    SimObject('I82094AA.py')
-    Source('i82094aa.cc')
-    DebugFlag('I82094AA')
-
-    SimObject('MSITarget.py')
-    Source('msi_target.cc')
-    DebugFlag('MSITarget')
+class MSITarget(BasicPioDevice):
+    type = 'MSITarget'
+    cxx_class = 'X86ISA::MSITarget'
+    cxx_header = "dev/x86/msi_target.hh"
+    int_master = MasterPort("Port for sending interrupt messages")
+    int_latency = Param.Latency('1ns', \
+            "Latency for an interrupt to propagate through this device.")

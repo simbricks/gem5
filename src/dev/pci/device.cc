@@ -211,7 +211,7 @@ PciDevice::PciDevice(const PciDeviceParams *p)
         }
     }
 
-    if (msicap.mc != 0) {
+    /*if (msicap.mc != 0) {
         uint8_t cap_off = offsetof(PCIConfig, maximumLatency) + 1;
 
         config.capabilityPtr = cap_off;
@@ -219,7 +219,64 @@ PciDevice::PciDevice(const PciDeviceParams *p)
 
         caps_start = cap_off;
         caps_end = cap_off + sizeof(msicap);
+    }*/
+}
+
+void
+PciDevice::readConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+        const uint8_t *basePtr, size_t len)
+{
+    int offset = addr - baseAddr;
+
+    /* todo handle size too large */
+    switch (pkt->getSize()) {
+      case sizeof(uint8_t):
+        pkt->setLE<uint8_t>(basePtr[offset]);
+        DPRINTF(PciDevice,
+            "readConfig:  dev %#x func %#x reg %#x 1 bytes: data = %#x\n",
+            _busAddr.dev, _busAddr.func, addr,
+            (uint32_t)pkt->getLE<uint8_t>());
+        break;
+      case sizeof(uint16_t):
+        pkt->setLE<uint16_t>(*(uint16_t*)&basePtr[offset]);
+        DPRINTF(PciDevice,
+            "readConfig:  dev %#x func %#x reg %#x 2 bytes: data = %#x\n",
+            _busAddr.dev, _busAddr.func, addr,
+            (uint32_t)pkt->getLE<uint16_t>());
+        break;
+      case sizeof(uint32_t):
+        pkt->setLE<uint32_t>(*(uint32_t*)&basePtr[offset]);
+        DPRINTF(PciDevice,
+            "readConfig:  dev %#x func %#x reg %#x 4 bytes: data = %#x\n",
+            _busAddr.dev, _busAddr.func, addr,
+            (uint32_t)pkt->getLE<uint32_t>());
+        break;
+      default:
+        panic("invalid access size(?) for PCI configspace!\n");
     }
+    pkt->makeAtomicResponse();
+}
+
+void
+PciDevice::writeConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+        uint8_t *basePtr, size_t len)
+{
+    int offset = addr - baseAddr;
+
+    switch (pkt->getSize()) {
+      case sizeof(uint8_t):
+        basePtr[offset] = pkt->getLE<uint8_t>();
+        break;
+      case sizeof(uint16_t):
+        *(uint16_t *) &basePtr[offset] = pkt->getLE<uint16_t>();
+        break;
+      case sizeof(uint32_t):
+        *(uint32_t *) &basePtr[offset] = pkt->getLE<uint32_t>();
+        break;
+      default:
+        panic("invalid access size(?) for PCI configspace!\n");
+    }
+    pkt->makeAtomicResponse();
 }
 
 Tick
@@ -227,10 +284,16 @@ PciDevice::readConfig(PacketPtr pkt)
 {
     int offset = pkt->getAddr() & PCI_CONFIG_SIZE;
 
-#if 0
-    /* Return 0 for accesses to unimplemented PCI configspace areas */
-    if (offset >= PCI_DEVICE_SPECIFIC &&
-        offset < PCI_CONFIG_SIZE) {
+    if (offset < PCI_DEVICE_SPECIFIC) {
+        /* read from standard config space registers */
+        readConfigBytes(pkt, offset, 0, config.data, PCI_DEVICE_SPECIFIC);
+    } else if (MSICAP_BASE && offset >= MSICAP_BASE &&
+            offset < MSICAP_BASE + sizeof(msicap))
+    {
+        /* read from MSI cap */
+        readConfigBytes(pkt, offset, MSICAP_BASE, msicap.data,
+                sizeof(msicap));
+    } else if (offset <= PCI_CONFIG_SIZE) {
         warn_once("Device specific PCI config space "
                   "not implemented for %s!\n", this->name());
         switch (pkt->getSize()) {
@@ -246,40 +309,9 @@ PciDevice::readConfig(PacketPtr pkt)
             default:
                 panic("invalid access size(?) for PCI configspace!\n");
         }
-    } else if (offset > PCI_CONFIG_SIZE) {
+    } else {
         panic("Out-of-range access to PCI config space!\n");
     }
-#endif
-    if (offset > PCI_CONFIG_SIZE) {
-        panic("Out-of-range access to PCI config space!\n");
-    }
-
-    switch (pkt->getSize()) {
-      case sizeof(uint8_t):
-        pkt->setLE<uint8_t>(config.data[offset]);
-        DPRINTF(PciDevice,
-            "readConfig:  dev %#x func %#x reg %#x 1 bytes: data = %#x\n",
-            _busAddr.dev, _busAddr.func, offset,
-            (uint32_t)pkt->getLE<uint8_t>());
-        break;
-      case sizeof(uint16_t):
-        pkt->setLE<uint16_t>(*(uint16_t*)&config.data[offset]);
-        DPRINTF(PciDevice,
-            "readConfig:  dev %#x func %#x reg %#x 2 bytes: data = %#x\n",
-            _busAddr.dev, _busAddr.func, offset,
-            (uint32_t)pkt->getLE<uint16_t>());
-        break;
-      case sizeof(uint32_t):
-        pkt->setLE<uint32_t>(*(uint32_t*)&config.data[offset]);
-        DPRINTF(PciDevice,
-            "readConfig:  dev %#x func %#x reg %#x 4 bytes: data = %#x\n",
-            _busAddr.dev, _busAddr.func, offset,
-            (uint32_t)pkt->getLE<uint32_t>());
-        break;
-      default:
-        panic("invalid access size(?) for PCI configspace!\n");
-    }
-    pkt->makeAtomicResponse();
     return configDelay;
 
 }
@@ -300,10 +332,16 @@ PciDevice::writeConfig(PacketPtr pkt)
 {
     int offset = pkt->getAddr() & PCI_CONFIG_SIZE;
 
-#if 0
-    /* No effect if we write to config space that is not implemented*/
-    if (offset >= PCI_DEVICE_SPECIFIC &&
-        offset < PCI_CONFIG_SIZE) {
+    if (MSICAP_BASE && offset >= MSICAP_BASE &&
+            offset < MSICAP_BASE + sizeof(msicap))
+    {
+        /* write to msi cap */
+        writeConfigBytes(pkt, offset, MSICAP_BASE, msicap.data,
+                sizeof(msicap));
+        return configDelay;
+    } else if (offset >= PCI_DEVICE_SPECIFIC &&
+            offset <= PCI_CONFIG_SIZE)
+    {
         warn_once("Device specific PCI config space "
                   "not implemented for %s!\n", this->name());
         switch (pkt->getSize()) {
@@ -314,28 +352,9 @@ PciDevice::writeConfig(PacketPtr pkt)
             default:
                 panic("invalid access size(?) for PCI configspace!\n");
         }
-    } else
-#endif
-    if (offset > PCI_CONFIG_SIZE) {
-        panic("Out-of-range access to PCI config space!\n");
-    }
-
-    if (offset >= caps_start && offset < caps_end) {
-        switch (pkt->getSize()) {
-          case sizeof(uint8_t):
-            config.data[offset] = pkt->getLE<uint8_t>();
-            break;
-          case sizeof(uint16_t):
-            *(uint16_t *) &config.data[offset] = pkt->getLE<uint16_t>();
-            break;
-          case sizeof(uint32_t):
-            *(uint32_t *) &config.data[offset] = pkt->getLE<uint32_t>();
-            break;
-          default:
-            panic("invalid access size(?) for PCI configspace!\n");
-        }
-        pkt->makeAtomicResponse();
         return configDelay;
+    } else if (offset > PCI_CONFIG_SIZE) {
+        panic("Out-of-range access to PCI config space!\n");
     }
 
     switch (pkt->getSize()) {
