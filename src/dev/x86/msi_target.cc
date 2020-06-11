@@ -75,18 +75,69 @@ X86ISA::MSITarget::read(PacketPtr pkt)
 Tick
 X86ISA::MSITarget::write(PacketPtr pkt)
 {
-    DPRINTF(MSITarget, "Received write addr=%x val=%x.\n", pkt->getAddr(),
-            pkt->getLE<uint32_t>());
-    uint8_t d_apic = (pkt->getAddr() >> 12) & 0xff;
-    uint32_t d_data = pkt->getLE<uint32_t>();
+    uint64_t d_addr = pkt->getAddr();
+    uint16_t d_data = pkt->getLE<uint16_t>();
+
+    DPRINTF(MSITarget, "Received write addr=%x val=%x.\n", d_addr, d_data);
 
     TriggerIntMessage message = 0;
-    message.destination = d_apic;
+    message.destination = (d_addr >> 12) & 0xff;;
     message.vector = d_data & 0xff;
-    message.deliveryMode = DeliveryMode::ExtInt;
+    message.deliveryMode = d_data >> 8 & 0x7;
+    message.destMode = (d_addr >> 2) & 1;
+    message.level = (d_data >> 14) & 1;
+    message.trigger = (d_data >> 14) & 1;
 
-    PacketPtr intPkt = buildIntTriggerPacket(d_apic, message);
-    intMasterPort.sendMessage(intPkt, sys->isTimingMode());
+    DPRINTF(MSITarget, "Received write addr=%x val=%x dest=%x vec=%x\n", d_addr, d_data, message.destination, message.vector);
+
+    std::list<int> apics;
+    int numContexts = sys->numContexts();
+    if (message.destMode == 0) {
+        /* physical destination mode */
+        if (message.deliveryMode == DeliveryMode::LowestPriority) {
+            panic("Lowest priority delivery mode from the "
+                    "IO APIC aren't supported in physical "
+                    "destination mode.\n");
+        }
+        if (message.destination == 0xFF) {
+            for (int i = 0; i < numContexts; i++) {
+                apics.push_back(i);
+            }
+        } else {
+            apics.push_back(message.destination);
+        }
+    } else {
+        for (int i = 0; i < numContexts; i++) {
+            BaseInterrupts *base_int = sys->getThreadContext(i)->
+                getCpuPtr()->getInterruptController(0);
+            auto *localApic = dynamic_cast<Interrupts *>(base_int);
+            if ((localApic->readReg(APIC_LOGICAL_DESTINATION) >> 24) &
+                    message.destination) {
+                apics.push_back(localApic->getInitialApicId());
+            }
+        }
+        if (message.deliveryMode == DeliveryMode::LowestPriority &&
+                apics.size()) {
+            // The manual seems to suggest that the chipset just does
+            // something reasonable for these instead of actually using
+            // state from the local APIC. We'll just rotate an offset
+            // through the set of APICs selected above.
+            uint64_t modOffset = lowestPriorityOffset % apics.size();
+            lowestPriorityOffset++;
+            auto apicIt = apics.begin();
+            while (modOffset--) {
+                apicIt++;
+                assert(apicIt != apics.end());
+            }
+            int selected = *apicIt;
+            apics.clear();
+            apics.push_back(selected);
+        }
+    }
+    for (auto id: apics) {
+        PacketPtr pkt = buildIntTriggerPacket(id, message);
+        intMasterPort.sendMessage(pkt, sys->isTimingMode());
+    }
 
     pkt->makeAtomicResponse();
     return pioDelay;

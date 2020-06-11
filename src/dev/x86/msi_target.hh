@@ -46,6 +46,7 @@ class MSITarget : public BasicPioDevice
 {
   protected:
     IntMasterPort<MSITarget> intMasterPort;
+    uint64_t lowestPriorityOffset;
 
   public:
     typedef MSITargetParams Params;
