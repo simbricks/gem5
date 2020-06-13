@@ -9,15 +9,16 @@
 
 namespace Cosim {
 
-static const int DEFAULT_POLL_INTERVAL = 100000000;
 
 Device::Device(const Params *p)
-    : EtherDevBase(p), interface(nullptr), h2dDone(false), h2dPacket(0),
+    : EtherDevBase(p), interface(nullptr), sync(p->sync),
+    pciAsynchrony(p->pci_asychrony),
+    devLastTime(0), h2dDone(false), h2dPacket(0),
     pciFd(-1), reqId(0),
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
     pollEvent([this]{processPollEvent();}, name()),
-    pollInterval(DEFAULT_POLL_INTERVAL)
+    pollInterval(p->poll_interval)
 {
     this->interface = new Interface(name() + ".int0", this);
     if (!nicsimInit(p)) {
@@ -172,6 +173,7 @@ Device::pollQueues()
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
     volatile struct cosim_pcie_proto_d2h_writecomp *wc;
     volatile struct cosim_pcie_proto_d2h_interrupt *intr;
+    volatile struct cosim_pcie_proto_d2h_sync *sync;
     volatile union cosim_pcie_proto_d2h *msg;
     DMACompl *dc;
     uint64_t rid, addr, len;
@@ -249,6 +251,13 @@ Device::pollQueues()
             h2dDone = true;
             break;
 
+
+        case COSIM_PCIE_PROTO_D2H_MSG_SYNC:
+            /* received sync message */
+            sync = &msg->sync;
+            devLastTime = sync->timestamp;
+            break;
+
         default:
             panic("Cosim::pollQueues: unsupported type=%x", ty);
     }
@@ -305,10 +314,14 @@ Device::nicsimInit(const Params *p)
     }
 
     struct cosim_pcie_proto_host_intro hi;
-    hi.flags = COSIM_PCIE_PROTO_FLAGS_HI_SYNC;
+    hi.flags = (sync ? COSIM_PCIE_PROTO_FLAGS_HI_SYNC : 0);
     if (send(this->pciFd, &hi, sizeof(hi), 0) != sizeof(hi)) {
         return false;
     }
+
+    if (sync && ((di.flags & COSIM_PCIE_PROTO_FLAGS_DI_SYNC) == 0))
+        panic("Cosim::nicsimInit: sync offered by device does not match local "
+                "setting");
 
     return true;
 }
@@ -416,6 +429,21 @@ Device::d2hDone(volatile union cosim_pcie_proto_d2h *msg)
 void
 Device::processPollEvent()
 {
+    if (sync) {
+        // sync is enabled, first send pulse, then wait if necessary
+        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
+        volatile struct cosim_pcie_proto_h2d_sync *sync = &msg->sync;
+
+        sync->timestamp = curTick() + pciAsynchrony;
+        sync->own_type = COSIM_PCIE_PROTO_H2D_MSG_SYNC |
+            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+
+        while (devLastTime < curTick()) {
+            //warn("waiting for PCI: last=%u cur=%u", devLastTime, curTick());
+            pollQueues();
+        }
+
+    }
     //DPRINTF(Ethernet, "cosim: poll event: %u\n", curTick());
     while (pollQueues());
 

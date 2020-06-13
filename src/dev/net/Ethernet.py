@@ -283,6 +283,10 @@ class Cosim(EtherDevBase):
     uxsocket_path = Param.String("unix socket path")
     shm_path = Param.String("Shared memory path")
 
+    sync = Param.Bool(False, "Synchronize over PCI")
+    poll_interval = Param.Latency('100ns', "poll interval size")
+    pci_asychrony = Param.Latency('500ns', "poll interval size")
+
     VendorID = 0x5543
     DeviceID = 0x1001
     Status = 0x0290

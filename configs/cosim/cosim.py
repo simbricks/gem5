@@ -30,7 +30,10 @@ class PCIPc(Pc):
                      MSICAPCapId=0x5,
                      MSICAPMsgCtrl=0x8a,
                      uxsocket_path="/tmp/cosim-pci",
-                     shm_path="/dev/shm/dummy_nic_shm")
+                     shm_path="/dev/shm/dummy_nic_shm",
+                     sync=False,
+                     poll_interval='100us',
+                     pci_asychrony='500us')
 
     def attachIO(self, bus, dma_ports = []):
         super(PCIPc, self).attachIO(bus, dma_ports)

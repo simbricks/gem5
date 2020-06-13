@@ -60,6 +60,10 @@ private:
             ~DMACompl();
     };
 
+    bool sync;
+    uint64_t pciAsynchrony;
+    uint64_t devLastTime;
+
     bool h2dDone;
     PacketPtr h2dPacket;
     uint64_t h2dId;
