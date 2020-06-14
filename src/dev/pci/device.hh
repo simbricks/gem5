@@ -175,6 +175,10 @@ class PciDevice : public DmaDevice
     void writeConfigBytes(PacketPtr pkt, int off, int baseOff,
             uint8_t *base_ptr, size_t len);
 
+    virtual SlavePort &pciPioPort()
+    {
+        return pioPort;
+    }
   public: // Host configuration interface
     /**
      * Write to the PCI config space data that is stored locally. This may be

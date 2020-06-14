@@ -11,7 +11,8 @@ namespace Cosim {
 
 
 Device::Device(const Params *p)
-    : EtherDevBase(p), interface(nullptr), sync(p->sync),
+    : EtherDevBase(p), interface(nullptr),
+    overridePort(name() + ".pio", *this), sync(p->sync),
     pciAsynchrony(p->pci_asychrony),
     devLastTime(0), h2dDone(false), h2dPacket(0),
     pciFd(-1), reqId(0),
@@ -25,6 +26,7 @@ Device::Device(const Params *p)
         panic("cosim: failed to initialize cosim");
     }
     DPRINTF(Ethernet, "cosim: device configured\n");
+    warn("pollInterval=%u  pciAsync=%u", pollInterval, pciAsynchrony);
 }
 
 Device::~Device()
@@ -39,8 +41,27 @@ Device::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "interface") {
         return *this->interface;
+    } else if (if_name == "pio") {
+        return overridePort;
     }
     return EtherDevBase::getPort(if_name, idx);
+}
+
+SlavePort &Device::pciPioPort()
+{
+    return overridePort;
+}
+
+void
+Device::init()
+{
+    /* not calling parent init on purpose, as that will cause problems because
+     * PIO port is not connected */
+    if (!overridePort.isConnected())
+        panic("Pio port (override) of %s not connected!", name());
+    if (!dmaPort.isConnected())
+        panic("DMA port (override) of %s not connected!", name());
+    overridePort.sendRangeChange();
 }
 
 Tick
@@ -460,6 +481,63 @@ void
 Interface::sendDone()
 {
     this->dev->transferDone();
+}
+
+
+/******************************************************************************/
+
+TimingPioPort::TimingPioPort(const std::string &_name,
+              Device &_dev,
+              PortID _id)
+    : QueuedSlavePort(_name, &_dev, respQueue, _id), dev(_dev),
+    respQueue(_dev, *this)
+{
+}
+
+AddrRangeList TimingPioPort::getAddrRanges() const
+{
+    warn("TimingPioPort::getAddrRanges()");
+    return dev.getAddrRanges();
+}
+
+
+void TimingPioPort::recvFunctional(PacketPtr pkt)
+{
+    if (pkt->cacheResponding())
+        panic("TimingPioPort: should not see cache responding");
+
+
+    if (respQueue.trySatisfyFunctional(pkt))
+        return;
+
+    if (pkt->isRead())
+        dev.read(pkt);
+    else
+        dev.write(pkt);
+
+    assert(pkt->isResponse() || pkt->isError());
+}
+
+Tick TimingPioPort::recvAtomic(PacketPtr pkt)
+{
+    if (pkt->cacheResponding())
+        panic("TimingPioPort: should not see cache responding");
+
+    // Technically the packet only reaches us after the header delay,
+    // and typically we also need to deserialise any payload.
+    Tick receive_delay = pkt->headerDelay + pkt->payloadDelay;
+    pkt->headerDelay = pkt->payloadDelay = 0;
+
+    const Tick delay =
+        pkt->isRead() ? dev.read(pkt) : dev.write(pkt);
+    assert(pkt->isResponse() || pkt->isError());
+    return delay + receive_delay;
+}
+
+bool TimingPioPort::recvTimingReq(PacketPtr pkt)
+{
+    panic("TODO: TimingPioPort::recvTimingReq");
+    return false;
 }
 
 } // namespace Cosim

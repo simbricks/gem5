@@ -455,7 +455,7 @@ PciDevice::writeConfig(PacketPtr pkt)
                                     hostInterface.pioAddr(he_new_bar) :
                                     hostInterface.memAddr(he_new_bar);
                             }
-                            pioPort.sendRangeChange();
+                            pciPioPort().sendRangeChange();
                         }
                     }
                     config.baseAddr[barnum] = htole((he_new_bar & ~bar_mask) |
@@ -647,6 +647,6 @@ PciDevice::unserialize(CheckpointIn &cp)
     pxcap.pxdcap2 = tmp32;
     paramIn(cp, csprintf("pxcap.pxdc2"), tmp32);
     pxcap.pxdc2 = tmp32;
-    pioPort.sendRangeChange();
+    pciPioPort().sendRangeChange();
 }
 

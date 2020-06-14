@@ -8,10 +8,36 @@
 
 namespace Cosim {
 
+class Device;
+class TimingPioPort : public QueuedSlavePort
+{
+  protected:
+    Device &dev;
+    RespPacketQueue respQueue;
+    std::unique_ptr<Packet> pendingDelete;
+
+
+    virtual void recvFunctional(PacketPtr pkt);
+    virtual Tick recvAtomic(PacketPtr pkt);
+    virtual bool recvTimingReq(PacketPtr pkt);
+
+  public:
+    TimingPioPort(const std::string &_name,
+                  Device &_dev,
+                  PortID _id = InvalidPortID);
+    virtual ~TimingPioPort() {}
+
+    virtual AddrRangeList getAddrRanges() const;
+};
+
+
+
 class Interface;
 class Device : public EtherDevBase
 {
 public:
+    friend class TimingPioPort;
+
     typedef CosimParams Params;
     const Params *params() const {
         return dynamic_cast<const Params *>(_params);
@@ -22,6 +48,9 @@ public:
 
     virtual Port &getPort(const std::string &if_name,
                           PortID idx=InvalidPortID) override;
+
+    void init() override;
+    virtual SlavePort &pciPioPort() override;
 
     virtual Tick read(PacketPtr pkt) override;
     virtual Tick write(PacketPtr pkt) override;
@@ -36,6 +65,7 @@ public:
 
 protected:
     Interface *interface;
+    TimingPioPort overridePort;
 
 private:
     friend class DMACompl;
