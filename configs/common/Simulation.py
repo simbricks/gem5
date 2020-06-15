@@ -610,7 +610,8 @@ def run(options, root, testsys, cpu_class):
         simpoints, interval_length = parseSimpointAnalysisFile(options, testsys)
 
     checkpoint_dir = None
-    if options.checkpoint_restore:
+    if options.checkpoint_restore != None:
+        print('CEHCKPOINT RESTORE THINGIE')
         cpt_starttick, checkpoint_dir = findCptDir(options, cptdir, testsys)
     root.apply_config(options.param)
     m5.instantiate(checkpoint_dir)
