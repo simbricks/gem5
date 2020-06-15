@@ -21,25 +21,6 @@ from common import ObjectList
 from common.Caches import *
 from common import Options
 
-class PCIPc(Pc):
-    ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
-                     InterruptLine=15, InterruptPin=1,
-                     BAR0=0xC0000000,
-                     CapabilityPtr=64,
-                     MSICAPBaseOffset=64,
-                     MSICAPCapId=0x5,
-                     MSICAPMsgCtrl=0x8a,
-                     uxsocket_path="/tmp/cosim-pci",
-                     shm_path="/dev/shm/dummy_nic_shm",
-                     sync=False,
-                     poll_interval='100us',
-                     pci_asychrony='500us')
-
-    def attachIO(self, bus, dma_ports = []):
-        super(PCIPc, self).attachIO(bus, dma_ports)
-        self.ethernet.pio = bus.master
-        self.ethernet.dma = bus.slave
-
 class CowIdeDisk(IdeDisk):
     image = CowDiskImage(child=RawDiskImage(read_only=True),
                          read_only=False)
@@ -138,6 +119,26 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
 
         self.mem_ranges = [AddrRange('3GB'),
             AddrRange(Addr('4GB'), size = excess_mem_size)]
+
+    class PCIPc(Pc):
+        ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
+                         InterruptLine=15, InterruptPin=1,
+                         BAR0=0xC0000000,
+                         CapabilityPtr=64,
+                         MSICAPBaseOffset=64,
+                         MSICAPCapId=0x5,
+                         MSICAPMsgCtrl=0x8a,
+                         uxsocket_path=options.cosim_pci,
+                         shm_path=options.cosim_shm,
+                         sync=options.cosim_sync,
+                         poll_interval='100ns',
+                         pci_asychrony='1us')
+
+        def attachIO(self, bus, dma_ports = []):
+            super(PCIPc, self).attachIO(bus, dma_ports)
+            self.ethernet.pio = bus.master
+            self.ethernet.dma = bus.slave
+
 
     # Platform
     self.pc = PCIPc()
@@ -387,6 +388,13 @@ def build_system(np):
 parser = optparse.OptionParser()
 Options.addCommonOptions(parser)
 Options.addFSOptions(parser)
+
+parser.add_option("--cosim-pci", action="store", type="string",
+        default="/tmp/cosim-pci", help="Cosim PCI Unix socket")
+parser.add_option("--cosim-shm", action="store", type="string",
+        default="/dev/shm/dummy_nic_shm", help="Cosim shared memory region")
+parser.add_option("--cosim-sync", action="store_true",
+        help="Synchronize with cosim pci device")
 
 (options, args) = parser.parse_args()
 
