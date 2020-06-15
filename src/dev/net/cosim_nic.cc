@@ -14,8 +14,7 @@ Device::Device(const Params *p)
     : EtherDevBase(p), interface(nullptr),
     overridePort(name() + ".pio", *this), sync(p->sync),
     pciAsynchrony(p->pci_asychrony),
-    devLastTime(0), h2dDone(false), h2dPacket(0),
-    pciFd(-1), reqId(0),
+    devLastTime(0),  pciFd(-1),
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
     pollEvent([this]{processPollEvent();}, name()),
@@ -64,78 +63,82 @@ Device::init()
     overridePort.sendRangeChange();
 }
 
-Tick
-Device::read(PacketPtr pkt)
+void
+Device::readAsync(PciPioCompl &comp)
 {
-    uint64_t req_id = this->reqId++;
-
-    DPRINTF(Ethernet, "cosim: receiving read addr %x size %x\n",
-            pkt->getAddr(), pkt->getSize());
-
     int bar;
     Addr daddr;
-    if (!getBAR(pkt->getAddr(), bar, daddr)) {
+
+    DPRINTF(Ethernet, "cosim: receiving read addr %x size %x\n",
+            comp.pkt->getAddr(), comp.pkt->getSize());
+
+    if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
         panic("Invalid PCI memory address\n");
     }
-
-    assert(h2dPacket == 0);
-    h2dDone = false;
-    h2dPacket = pkt;
-    h2dId = req_id;
 
     /* Send read message */
     volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
     volatile struct cosim_pcie_proto_h2d_read *read = &h2d_msg->read;
-    read->req_id = req_id;
+    read->req_id = (uintptr_t) &comp;
     read->offset = daddr;
-    read->len = pkt->getSize();
+    read->len = comp.pkt->getSize();
     read->bar = bar;
     read->own_type = COSIM_PCIE_PROTO_H2D_MSG_READ | COSIM_PCIE_PROTO_H2D_OWN_DEV;
+}
+
+void
+Device::writeAsync(PciPioCompl &comp)
+{
+    int bar;
+    Addr daddr;
+
+    DPRINTF(Ethernet, "cosim: receiving write addr %x size %x\n",
+            comp.pkt->getAddr(), comp.pkt->getSize());
+
+    if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
+        panic("Invalid PCI memory address\n");
+    }
+
+    /* Send write message */
+    volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
+    volatile struct cosim_pcie_proto_h2d_write *write = &h2d_msg->write;
+    write->req_id = (uintptr_t) &comp;
+    write->offset = daddr;
+    write->len = comp.pkt->getSize();
+    write->bar = bar;
+    memcpy((void *)write->data, comp.pkt->getPtr<uint8_t>(),
+            comp.pkt->getSize());
+    write->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITE |
+        COSIM_PCIE_PROTO_H2D_OWN_DEV;
+}
+
+Tick
+Device::read(PacketPtr pkt)
+{
+    PciPioCompl pc(pkt);
+
+    readAsync(pc);
 
     /* wait for operation to complete */
-    while (!h2dDone)
+    while (!pc.done)
         pollQueues();
 
     pkt->makeAtomicResponse();
-    h2dPacket = 0;
     return 1;
 }
 
 Tick
 Device::write(PacketPtr pkt)
 {
-    uint64_t req_id = this->reqId++;
+    PciPioCompl pc(pkt);
 
-    DPRINTF(Ethernet, "cosim: receiving write addr %x size %x\n",
-            pkt->getAddr(), pkt->getSize());
-
-    int bar;
-    Addr daddr;
-    if (!getBAR(pkt->getAddr(), bar, daddr)) {
-        panic("Invalid PCI memory address\n");
-    }
-
-    assert(h2dPacket == 0);
-    h2dDone = false;
-    h2dPacket = pkt;
-    h2dId = req_id;
-
-    /* Send write message */
-    volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
-    volatile struct cosim_pcie_proto_h2d_write *write = &h2d_msg->write;
-    write->req_id = req_id;
-    write->offset = daddr;
-    write->len = pkt->getSize();
-    write->bar = bar;
-    memcpy((void *)write->data, pkt->getPtr<uint8_t>(), pkt->getSize());
-    write->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITE | COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    writeAsync(pc);
 
     /* wait for operation to complete */
-    while (!h2dDone)
+    while (!pc.done)
         pollQueues();
 
     pkt->makeAtomicResponse();
-    h2dPacket = 0;
     return 1;
 }
 
@@ -197,6 +200,7 @@ Device::pollQueues()
     volatile struct cosim_pcie_proto_d2h_sync *sync;
     volatile union cosim_pcie_proto_d2h *msg;
     DMACompl *dc;
+    PciPioCompl *pc;
     uint64_t rid, addr, len;
     uint8_t ty;
 
@@ -260,16 +264,16 @@ Device::pollQueues()
         case COSIM_PCIE_PROTO_D2H_MSG_READCOMP:
             /* Receive read complete message */
             rc = &msg->readcomp;
-            assert(rc->req_id == h2dId);
-            h2dPacket->setData((const uint8_t *) rc->data);
-            h2dDone = true;
+            pc = (PciPioCompl *) (uintptr_t) rc->req_id;
+            pc->pkt->setData((const uint8_t *) rc->data);
+            pc->setDone();
             break;
 
         case COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP:
             /* Receive write complete message */
             wc = &msg->writecomp;
-            assert(wc->req_id == h2dId);
-            h2dDone = true;
+            pc = (PciPioCompl *) (uintptr_t) wc->req_id;
+            pc->setDone();
             break;
 
 

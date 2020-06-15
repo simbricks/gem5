@@ -8,6 +8,22 @@
 
 namespace Cosim {
 
+class PciPioCompl {
+  public:
+    PacketPtr pkt;
+    bool done;
+
+    PciPioCompl(PacketPtr _pkt)
+        : pkt(_pkt), done(false)
+    {
+    }
+
+    virtual void setDone()
+    {
+        done = true;
+    };
+};
+
 class Device;
 class TimingPioPort : public QueuedSlavePort
 {
@@ -52,6 +68,9 @@ public:
     void init() override;
     virtual SlavePort &pciPioPort() override;
 
+    void readAsync(PciPioCompl &comp);
+    void writeAsync(PciPioCompl &comp);
+
     virtual Tick read(PacketPtr pkt) override;
     virtual Tick write(PacketPtr pkt) override;
 
@@ -94,10 +113,6 @@ private:
     uint64_t pciAsynchrony;
     uint64_t devLastTime;
 
-    bool h2dDone;
-    PacketPtr h2dPacket;
-    uint64_t h2dId;
-
     void dmaDone(DMACompl &comp);
     bool pollQueues();
     bool nicsimInit(const Params *p);
@@ -110,7 +125,6 @@ private:
     void processPollEvent();
 
     int pciFd;
-    uint64_t reqId;
 
     uint8_t *d2hQueue;
     size_t d2hPos;
