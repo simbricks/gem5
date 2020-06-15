@@ -117,6 +117,10 @@ Device::read(PacketPtr pkt)
 {
     PciPioCompl pc(pkt);
 
+    if (sync)
+        warn_once("cosim: atomic/functional read in synchronous mode "
+                "(this will likely deadlock)");
+
     readAsync(pc);
 
     /* wait for operation to complete */
@@ -131,6 +135,10 @@ Tick
 Device::write(PacketPtr pkt)
 {
     PciPioCompl pc(pkt);
+
+    if (sync)
+        warn_once("cosim: atomic/functional write in synchronous mode "
+                "(this will likely deadlock)");
 
     writeAsync(pc);
 
@@ -505,7 +513,8 @@ AddrRangeList TimingPioPort::getAddrRanges() const
 }
 
 
-void TimingPioPort::recvFunctional(PacketPtr pkt)
+void
+TimingPioPort::recvFunctional(PacketPtr pkt)
 {
     if (pkt->cacheResponding())
         panic("TimingPioPort: should not see cache responding");
@@ -522,7 +531,8 @@ void TimingPioPort::recvFunctional(PacketPtr pkt)
     assert(pkt->isResponse() || pkt->isError());
 }
 
-Tick TimingPioPort::recvAtomic(PacketPtr pkt)
+Tick
+TimingPioPort::recvAtomic(PacketPtr pkt)
 {
     if (pkt->cacheResponding())
         panic("TimingPioPort: should not see cache responding");
@@ -538,10 +548,51 @@ Tick TimingPioPort::recvAtomic(PacketPtr pkt)
     return delay + receive_delay;
 }
 
-bool TimingPioPort::recvTimingReq(PacketPtr pkt)
+bool
+TimingPioPort::recvTimingReq(PacketPtr pkt)
 {
-    panic("TODO: TimingPioPort::recvTimingReq");
-    return false;
+    TimingPioCompl *tpc;
+
+    if (pkt->cacheResponding())
+        panic("TimingPioPort: should not see cache responding");
+
+    tpc = new TimingPioCompl(*this, pkt);
+    if (pkt->isRead()) {
+        dev.readAsync(*tpc);
+    } else if (pkt->isWrite()) {
+        dev.writeAsync(*tpc);
+    } else {
+        panic("TimingPioPort: unknown packet type");
+    }
+
+    return true;
+}
+
+void
+TimingPioPort::timingPioCompl(TimingPioCompl &comp)
+{
+    if (!comp.needResp) {
+        delete comp.pkt;
+        comp.pkt = nullptr;
+        return;
+    }
+
+    comp.pkt->makeTimingResponse();
+    schedTimingResp(comp.pkt, curTick());
+    comp.pkt = nullptr;
+}
+
+TimingPioCompl::TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt)
+    : PciPioCompl(_pkt), port(_port), needResp(_pkt->needsResponse())
+{
+}
+
+void
+TimingPioCompl::setDone()
+{
+    done = true;
+    port.timingPioCompl(*this);
+    delete this;
 }
 
 } // namespace Cosim

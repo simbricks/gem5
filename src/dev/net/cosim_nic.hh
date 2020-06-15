@@ -24,6 +24,21 @@ class PciPioCompl {
     };
 };
 
+class TimingPioPort;
+class TimingPioCompl : public PciPioCompl {
+  protected:
+    TimingPioPort &port;
+
+  public:
+    bool needResp;
+
+    TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt);
+    virtual ~TimingPioCompl() {}
+
+    virtual void setDone() override;
+};
+
+
 class Device;
 class TimingPioPort : public QueuedSlavePort
 {
@@ -31,7 +46,6 @@ class TimingPioPort : public QueuedSlavePort
     Device &dev;
     RespPacketQueue respQueue;
     std::unique_ptr<Packet> pendingDelete;
-
 
     virtual void recvFunctional(PacketPtr pkt);
     virtual Tick recvAtomic(PacketPtr pkt);
@@ -42,6 +56,8 @@ class TimingPioPort : public QueuedSlavePort
                   Device &_dev,
                   PortID _id = InvalidPortID);
     virtual ~TimingPioPort() {}
+
+    void timingPioCompl(TimingPioCompl &comp);
 
     virtual AddrRangeList getAddrRanges() const;
 };
