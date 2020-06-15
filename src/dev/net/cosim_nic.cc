@@ -302,7 +302,7 @@ Device::unserialize(CheckpointIn &cp)
 void
 Device::startup()
 {
-    schedule(this->pollEvent, this->pollInterval);
+    schedule(this->pollEvent, curTick() + this->pollInterval);
 }
 
 bool
