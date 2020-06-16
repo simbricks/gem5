@@ -427,7 +427,7 @@ error:
 }
 
 volatile union cosim_pcie_proto_h2d *
-Device::h2dAlloc(bool sync)
+Device::h2dAlloc(bool syncAlloc)
 {
     volatile union cosim_pcie_proto_h2d *msg =
         (volatile union cosim_pcie_proto_h2d *)
@@ -442,7 +442,7 @@ Device::h2dAlloc(bool sync)
 
     this->h2dPos = (this->h2dPos + 1) % this->h2dEnum;
 
-    if (!sync)
+    if (sync && !syncAlloc)
         reschedule(this->syncTxEvent, curTick() + this->syncTxInterval);
 
     return msg;
