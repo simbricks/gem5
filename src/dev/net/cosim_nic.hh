@@ -135,10 +135,11 @@ private:
     bool uxsocketInit(const Params *p);
     bool queueCreate(const Params *p,
                      const struct cosim_pcie_proto_dev_intro &di);
-    volatile union cosim_pcie_proto_h2d *h2dAlloc();
+    volatile union cosim_pcie_proto_h2d *h2dAlloc(bool isSync=false);
     volatile union cosim_pcie_proto_d2h *d2hPoll();
     void d2hDone(volatile union cosim_pcie_proto_d2h *msg);
     void processPollEvent();
+    void processSyncTxEvent();
 
     int pciFd;
 
@@ -153,7 +154,9 @@ private:
     size_t h2dEnum;
 
     EventFunctionWrapper pollEvent;
+    EventFunctionWrapper syncTxEvent;
     int pollInterval;
+    int syncTxInterval;
 };
 
 class Interface : public EtherInt

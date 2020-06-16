@@ -285,6 +285,7 @@ class Cosim(EtherDevBase):
 
     sync = Param.Bool(False, "Synchronize over PCI")
     poll_interval = Param.Latency('100ns', "poll interval size")
+    sync_tx_interval = Param.Latency('500ns', "interval between syncs")
     pci_asychrony = Param.Latency('500ns', "poll interval size")
 
     VendorID = 0x5543

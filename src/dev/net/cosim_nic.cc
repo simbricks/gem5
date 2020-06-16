@@ -18,7 +18,8 @@ Device::Device(const Params *p)
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
     pollEvent([this]{processPollEvent();}, name()),
-    pollInterval(p->poll_interval)
+    syncTxEvent([this]{processSyncTxEvent();}, name()),
+    pollInterval(p->poll_interval), syncTxInterval(p->sync_tx_interval)
 {
     this->interface = new Interface(name() + ".int0", this);
     if (!nicsimInit(p)) {
@@ -118,8 +119,7 @@ Device::read(PacketPtr pkt)
     PciPioCompl pc(pkt);
 
     if (sync)
-        warn_once("cosim: atomic/functional read in synchronous mode "
-                "(this will likely deadlock)");
+        panic("cosim: atomic/functional read in synchronous mode");
 
     readAsync(pc);
 
@@ -137,8 +137,7 @@ Device::write(PacketPtr pkt)
     PciPioCompl pc(pkt);
 
     if (sync)
-        warn_once("cosim: atomic/functional write in synchronous mode "
-                "(this will likely deadlock)");
+        panic("cosim: atomic/functional write in synchronous mode");
 
     writeAsync(pc);
 
@@ -205,7 +204,6 @@ Device::pollQueues()
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
     volatile struct cosim_pcie_proto_d2h_writecomp *wc;
     volatile struct cosim_pcie_proto_d2h_interrupt *intr;
-    volatile struct cosim_pcie_proto_d2h_sync *sync;
     volatile union cosim_pcie_proto_d2h *msg;
     DMACompl *dc;
     PciPioCompl *pc;
@@ -214,6 +212,14 @@ Device::pollQueues()
 
     msg = d2hPoll();
     if (!msg)
+        return false;
+
+    /* record the timestamp */
+    devLastTime = msg->dummy.timestamp;
+
+    /* in sync mode: if this message is timestamped in the future don't process
+     * it */
+    if (sync && devLastTime > curTick())
         return false;
 
     ty = msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK;
@@ -287,8 +293,6 @@ Device::pollQueues()
 
         case COSIM_PCIE_PROTO_D2H_MSG_SYNC:
             /* received sync message */
-            sync = &msg->sync;
-            devLastTime = sync->timestamp;
             break;
 
         default:
@@ -314,7 +318,9 @@ Device::unserialize(CheckpointIn &cp)
 void
 Device::startup()
 {
-    schedule(this->pollEvent, curTick() + this->pollInterval);
+    if (sync)
+        schedule(this->syncTxEvent, curTick());
+    schedule(this->pollEvent, curTick() + 1);
 }
 
 bool
@@ -421,7 +427,7 @@ error:
 }
 
 volatile union cosim_pcie_proto_h2d *
-Device::h2dAlloc()
+Device::h2dAlloc(bool sync)
 {
     volatile union cosim_pcie_proto_h2d *msg =
         (volatile union cosim_pcie_proto_h2d *)
@@ -432,7 +438,13 @@ Device::h2dAlloc()
         panic("cosim: failed to allocate h2d message\n");
     }
 
+    msg->dummy.timestamp = curTick() + pciAsynchrony;
+
     this->h2dPos = (this->h2dPos + 1) % this->h2dEnum;
+
+    if (!sync)
+        reschedule(this->syncTxEvent, curTick() + this->syncTxInterval);
+
     return msg;
 }
 
@@ -462,25 +474,33 @@ Device::d2hDone(volatile union cosim_pcie_proto_d2h *msg)
 void
 Device::processPollEvent()
 {
+    /* run what we can */
+    while (pollQueues());
+
     if (sync) {
-        // sync is enabled, first send pulse, then wait if necessary
-        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
-        volatile struct cosim_pcie_proto_h2d_sync *sync = &msg->sync;
-
-        sync->timestamp = curTick() + pciAsynchrony;
-        sync->own_type = COSIM_PCIE_PROTO_H2D_MSG_SYNC |
-            COSIM_PCIE_PROTO_H2D_OWN_DEV;
-
-        while (devLastTime < curTick()) {
-            //warn("waiting for PCI: last=%u cur=%u", devLastTime, curTick());
+        /* in sychronized mode we might need to wait till we get a message with
+         * a timestamp allowing us to proceed */
+        while (devLastTime <= curTick()) {
             pollQueues();
         }
 
+        schedule(this->pollEvent, devLastTime);
+    } else {
+        /* in non-synchronized mode just poll at fixed intervals */
+        schedule(this->pollEvent, curTick() + this->pollInterval);
     }
-    //DPRINTF(Ethernet, "cosim: poll event: %u\n", curTick());
-    while (pollQueues());
+}
 
-    schedule(this->pollEvent, curTick() + this->pollInterval);
+void
+Device::processSyncTxEvent()
+{
+    volatile union cosim_pcie_proto_h2d *msg = h2dAlloc(true);
+    volatile struct cosim_pcie_proto_h2d_sync *sync = &msg->sync;
+
+    sync->own_type = COSIM_PCIE_PROTO_H2D_MSG_SYNC |
+        COSIM_PCIE_PROTO_H2D_OWN_DEV;
+
+    schedule(this->syncTxEvent, curTick() + this->syncTxInterval);
 }
 
 bool
