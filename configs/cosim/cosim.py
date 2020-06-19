@@ -142,6 +142,8 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
 
     # Platform
     self.pc = PCIPc()
+    self.pc.com_1.device = Terminal(port = options.termport, outfile =
+            'stdoutput')
 
     # Create and connect the busses required by each memory system
     connectX86ClassicSystem(self, numCPUs)
@@ -274,7 +276,7 @@ def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
 
     # Command line
     if not cmdline:
-        cmdline = 'earlyprintk=ttyS0 console=ttyS0 lpj=7999923 root=/dev/sda2'
+        cmdline = 'earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 no_timer_check memory_corruption_check=0 random.trust_cpu=on init=/home/ubuntu/guestinit.sh'
     self.workload.command_line = fillInCmdline(mdesc, cmdline)
     return self
 
@@ -389,6 +391,8 @@ parser = optparse.OptionParser()
 Options.addCommonOptions(parser)
 Options.addFSOptions(parser)
 
+parser.add_option("--termport", action="store", type="int",
+        default="3456", help="port for terminal to listen on")
 parser.add_option("--cosim-pci", action="store", type="string",
         default="/tmp/cosim-pci", help="Cosim PCI Unix socket")
 parser.add_option("--cosim-shm", action="store", type="string",
