@@ -70,8 +70,8 @@ Device::readAsync(PciPioCompl &comp)
     int bar;
     Addr daddr;
 
-    DPRINTF(Ethernet, "cosim: receiving read addr %x size %x\n",
-            comp.pkt->getAddr(), comp.pkt->getSize());
+    DPRINTF(Ethernet, "cosim: sending read addr %x size %x id %lu\n",
+            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
 
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
         panic("Invalid PCI memory address\n");
@@ -93,8 +93,8 @@ Device::writeAsync(PciPioCompl &comp)
     int bar;
     Addr daddr;
 
-    DPRINTF(Ethernet, "cosim: receiving write addr %x size %x\n",
-            comp.pkt->getAddr(), comp.pkt->getSize());
+    DPRINTF(Ethernet, "cosim: sending write addr %x size %x id %lu\n",
+            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
 
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
         panic("Invalid PCI memory address\n");
@@ -208,6 +208,7 @@ Device::pollQueues()
     DMACompl *dc;
     PciPioCompl *pc;
     uint64_t rid, addr, len;
+    uint32_t vec;
     uint8_t ty;
 
     msg = d2hPoll();
@@ -259,6 +260,9 @@ Device::pollQueues()
             assert(intr->inttype == COSIM_PCIE_PROTO_INT_MSI);
             assert(intr->vector < 32);
 
+            vec = intr->vector;
+            DPRINTF(Ethernet, "cosim: received intr vec %u\n", vec);
+
             if ((msicap.mc & 0x1) != 0 &&
                     ((msicap.mmask & (1 << intr->vector)) == 0))
             {
@@ -278,7 +282,11 @@ Device::pollQueues()
         case COSIM_PCIE_PROTO_D2H_MSG_READCOMP:
             /* Receive read complete message */
             rc = &msg->readcomp;
-            pc = (PciPioCompl *) (uintptr_t) rc->req_id;
+
+            rid = rc->req_id;
+            DPRINTF(Ethernet, "cosim: received read completion id %lu\n", rid);
+
+            pc = (PciPioCompl *) (uintptr_t) rid;
             pc->pkt->setData((const uint8_t *) rc->data);
             pc->setDone();
             break;
@@ -286,7 +294,11 @@ Device::pollQueues()
         case COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP:
             /* Receive write complete message */
             wc = &msg->writecomp;
-            pc = (PciPioCompl *) (uintptr_t) wc->req_id;
+
+            rid = wc->req_id;
+            DPRINTF(Ethernet, "cosim: received write completion id %lu\n", rid);
+
+            pc = (PciPioCompl *) (uintptr_t) rid;
             pc->setDone();
             break;
 
