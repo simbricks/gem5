@@ -32,7 +32,8 @@ class TimingPioCompl : public PciPioCompl {
   public:
     bool needResp;
 
-    TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt);
+    TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt,
+            bool needResp_);
     virtual ~TimingPioCompl() {}
 
     virtual void setDone() override;
@@ -126,6 +127,7 @@ private:
     };
 
     bool sync;
+    bool writesPosted;
     uint64_t pciAsynchrony;
     uint64_t devLastTime;
 

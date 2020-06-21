@@ -13,7 +13,7 @@ namespace Cosim {
 Device::Device(const Params *p)
     : EtherDevBase(p), interface(nullptr),
     overridePort(name() + ".pio", *this), sync(p->sync),
-    pciAsynchrony(p->pci_asychrony),
+    writesPosted(true), pciAsynchrony(p->pci_asychrony),
     devLastTime(0),  pciFd(-1),
     d2hQueue(nullptr), d2hPos(0), d2hElen(0), d2hEnum(0),
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
@@ -584,15 +584,29 @@ bool
 TimingPioPort::recvTimingReq(PacketPtr pkt)
 {
     TimingPioCompl *tpc;
+    bool needResp;
 
     if (pkt->cacheResponding())
         panic("TimingPioPort: should not see cache responding");
 
-    tpc = new TimingPioCompl(*this, pkt);
+    needResp = pkt->needsResponse();
+
+    if (pkt->isWrite() && dev.writesPosted)
+        needResp = false;
+
+    tpc = new TimingPioCompl(*this, pkt, needResp);
     if (pkt->isRead()) {
         dev.readAsync(*tpc);
     } else if (pkt->isWrite()) {
         dev.writeAsync(*tpc);
+
+        if (pkt->isWrite() && dev.writesPosted && pkt->needsResponse()) {
+            DPRINTF(Ethernet, "cosim: sending immediate response for "
+                    "posted write\n");
+            pkt->makeTimingResponse();
+            schedTimingResp(pkt, curTick() + 1);
+            tpc->pkt = 0;
+        }
     } else {
         panic("TimingPioPort: unknown packet type");
     }
@@ -604,8 +618,10 @@ void
 TimingPioPort::timingPioCompl(TimingPioCompl &comp)
 {
     if (!comp.needResp) {
-        delete comp.pkt;
-        comp.pkt = nullptr;
+        if (comp.pkt) {
+            delete comp.pkt;
+            comp.pkt = nullptr;
+        }
         return;
     }
 
@@ -614,8 +630,9 @@ TimingPioPort::timingPioCompl(TimingPioCompl &comp)
     comp.pkt = nullptr;
 }
 
-TimingPioCompl::TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt)
-    : PciPioCompl(_pkt), port(_port), needResp(_pkt->needsResponse())
+TimingPioCompl::TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt,
+        bool needResp_)
+    : PciPioCompl(_pkt), port(_port), needResp(needResp_)
 {
 }
 
