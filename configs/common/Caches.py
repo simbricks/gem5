@@ -67,9 +67,9 @@ class L1_DCache(L1Cache):
 
 class L2Cache(Cache):
     assoc = 8
-    tag_latency = 20
-    data_latency = 20
-    response_latency = 20
+    tag_latency = 6
+    data_latency = 6
+    response_latency = 6
     mshrs = 20
     tgts_per_mshr = 12
     write_buffers = 8
