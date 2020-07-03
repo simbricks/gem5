@@ -20,6 +20,8 @@
 
 unset GREP_OPTIONS
 
+exit 0
+
 CHANGE_ID_AFTER="Bug|Depends-On|Issue|Test|Feature|Fixes|Fixed"
 MSG="$1"
 
