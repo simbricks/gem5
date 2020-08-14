@@ -137,6 +137,14 @@ def addNoISAOptions(parser):
     parser.add_option("--l3_assoc", type="int", default=16)
     parser.add_option("--cacheline_size", type="int", default=64)
 
+    # DDIO Related
+    parser.add_option("--ddio-disabled", action="store_true", help="DDIO is disabled")
+
+    parser.add_option("--ddio-enabled", action="store_true", help="Enable DDIO")
+    parser.add_option("--ddio-way-part", action="store", type="int", help="way partion of ddio - if set to 0 ddio can use the entire llc", default=0)
+    parser.add_option("--iocache_size", type="string", default="1kB")
+    parser.add_option("--iocache_assoc", type="int", default=16) 
+
     # Enable Ruby
     parser.add_option("--ruby", action="store_true")
 

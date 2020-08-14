@@ -304,7 +304,10 @@ class Packet : public Printable
 
         // Signal block present to squash prefetch and cache evict packets
         // through express snoop flag
-        BLOCK_CACHED          = 0x00010000
+        BLOCK_CACHED          = 0x00010000,
+
+        // Block is from IO
+        BLOCK_IO = 0x00100000
     };
 
     Flags flags;
@@ -685,6 +688,10 @@ class Packet : public Printable
     void setBlockCached()          { flags.set(BLOCK_CACHED); }
     bool isBlockCached() const     { return flags.isSet(BLOCK_CACHED); }
     void clearBlockCached()        { flags.clear(BLOCK_CACHED); }
+
+    void setBlockIO()          { flags.set(BLOCK_IO); }
+    bool isBlockIO() const     { return flags.isSet(BLOCK_IO); }
+    void clearBlockIO()        { flags.clear(BLOCK_IO); }
 
     /**
      * QoS Value getter

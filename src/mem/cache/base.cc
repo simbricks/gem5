@@ -105,6 +105,11 @@ BaseCache::BaseCache(const BaseCacheParams *p, unsigned blk_size)
       missCount(p->max_miss_count),
       addrRanges(p->addr_ranges.begin(), p->addr_ranges.end()),
       system(p->system),
+      isIOCache(p->is_iocache), 
+      ddioEnabled(p->ddio_enabled), 
+      ddioDisabled(p->ddio_disabled), 
+      ddioWayPart(p->ddio_way_part), 
+      isLLC(p->is_llc),
       stats(*this)
 {
     // the MSHR queue has no reserve entries as we check the MSHR
@@ -344,7 +349,7 @@ BaseCache::recvTimingReq(PacketPtr pkt)
         PacketList writebacks;
         // Note that lat is passed by reference here. The function
         // access() will set the lat value.
-        satisfied = access(pkt, blk, lat, writebacks);
+        satisfied = access(pkt, blk, lat, writebacks, pkt->isBlockIO() && ddioEnabled);
 
         // After the evicted blocks are selected, they must be forwarded
         // to the write buffer to ensure they logically precede anything
@@ -468,7 +473,7 @@ BaseCache::recvTimingResp(PacketPtr pkt)
 
         const bool allocate = (writeAllocator && mshr->wasWholeLineWrite) ?
             writeAllocator->allocate() : mshr->allocOnFill();
-        blk = handleFill(pkt, blk, writebacks, allocate);
+        blk = handleFill(pkt, blk, writebacks, allocate, mshr->wasBlockIO && ddioEnabled);
         assert(blk != nullptr);
         ppFill->notify(pkt);
     }
@@ -972,7 +977,7 @@ BaseCache::satisfyRequest(PacketPtr pkt, CacheBlk *blk, bool, bool)
         blk->status &= ~BlkDirty;
     } else {
         assert(pkt->isInvalidate());
-        invalidateBlock(blk);
+        invalidateBlock(blk, isLLCIOInvalid(pkt));
         DPRINTF(CacheVerbose, "%s for %s (invalidation)\n", __func__,
                 pkt->print());
     }
@@ -1028,7 +1033,7 @@ BaseCache::calculateAccessLatency(const CacheBlk* blk, const uint32_t delay,
 
 bool
 BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
-                  PacketList &writebacks)
+                  PacketList &writebacks, bool is_ddio)
 {
     // sanity check
     assert(pkt->isRequest());
@@ -1130,7 +1135,7 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
 
         if (!blk) {
             // need to do a replacement
-            blk = allocateBlock(pkt, writebacks);
+            blk = allocateBlock(pkt, writebacks, is_ddio);
             if (!blk) {
                 // no replaceable block available: give up, fwd to next level.
                 incMissCount(pkt);
@@ -1205,7 +1210,7 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
                 return false;
             } else {
                 // a writeback that misses needs to allocate a new block
-                blk = allocateBlock(pkt, writebacks);
+                blk = allocateBlock(pkt, writebacks, is_ddio);
                 if (!blk) {
                     // no replaceable block available: give up, fwd to
                     // next level.
@@ -1304,7 +1309,7 @@ BaseCache::maintainClusivity(bool from_cache, CacheBlk *blk)
 
 CacheBlk*
 BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
-                      bool allocate)
+                      bool allocate, bool is_ddio)
 {
     assert(pkt->isResponse());
     Addr addr = pkt->getAddr();
@@ -1323,7 +1328,7 @@ BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
 
         // need to do a replacement if allocating, otherwise we stick
         // with the temporary storage
-        blk = allocate ? allocateBlock(pkt, writebacks) : nullptr;
+        blk = allocate ? allocateBlock(pkt, writebacks, is_ddio) : nullptr;
 
         if (!blk) {
             // No replaceable block or a mostly exclusive
@@ -1400,7 +1405,7 @@ BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
 }
 
 CacheBlk*
-BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
+BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks, bool is_ddio)
 {
     // Get address
     const Addr addr = pkt->getAddr();
@@ -1427,8 +1432,13 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
 
     // Find replacement victim
     std::vector<CacheBlk*> evict_blks;
-    CacheBlk *victim = tags->findVictim(addr, is_secure, blk_size_bits,
-                                        evict_blks);
+    CacheBlk *victim = nullptr;
+    if (is_ddio){
+        victim = tags->findVictimWayPart(addr, is_secure, blk_size_bits, evict_blks, ddioWayPart);
+    }
+    else{
+        victim = tags->findVictim(addr, is_secure, blk_size_bits, evict_blks);
+    }
 
     // It is valid to return nullptr if there is no victim
     if (!victim)
@@ -1456,7 +1466,7 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
 }
 
 void
-BaseCache::invalidateBlock(CacheBlk *blk)
+BaseCache::invalidateBlock(CacheBlk *blk, bool is_llc_inv)
 {
     // If block is still marked as prefetched, then it hasn't been used
     if (blk->wasPrefetched()) {
@@ -1466,7 +1476,13 @@ BaseCache::invalidateBlock(CacheBlk *blk)
     // If handling a block present in the Tags, let it do its invalidation
     // process, which will update stats and invalidate the block itself
     if (blk != tempBlock) {
-        tags->invalidate(blk);
+        if (is_llc_inv){
+            tags->invalidateDDIO(blk);
+        }
+        else{
+            tags->invalidate(blk);
+        }
+        
     } else {
         tempBlock->invalidate();
     }
@@ -1519,6 +1535,10 @@ BaseCache::writebackBlk(CacheBlk *blk)
 
     pkt->allocate();
     pkt->setDataFromBlock(blk->data, blkSize);
+
+    if (isIOCache) {
+        pkt->setBlockIO();
+    }
 
     // When a block is compressed, it must first be decompressed before being
     // sent for writeback.
@@ -1614,6 +1634,11 @@ BaseCache::writebackVisitor(CacheBlk &blk)
         }
 
         Packet packet(request, MemCmd::WriteReq);
+
+        if (isIOCache){
+            packet.setBlockIO();
+        }
+
         packet.dataStatic(blk.data);
 
         memSidePort.sendFunctional(&packet);

@@ -141,6 +141,14 @@ class BaseCache(ClockedObject):
     # data cache.
     write_allocator = Param.WriteAllocator(NULL, "Write allocator")
 
+    #DDIO parameters
+    is_iocache = Param.Bool(False, "Is this cache the IOCache?")
+    ddio_enabled = Param.Bool(False, "Enabled DDIO?")
+    ddio_disabled = Param.Bool(False, "Disabled DDIO?")
+    is_llc = Param.Bool(False, "Is this cache the llc?")
+    ddio_way_part = Param.Int(-1, "way partitioning for ddio; " "-1 means all sets can be used")
+
+
 class Cache(BaseCache):
     type = 'Cache'
     cxx_header = 'mem/cache/cache.hh'

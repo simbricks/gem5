@@ -91,6 +91,19 @@ BaseSetAssoc::invalidate(CacheBlk *blk)
     replacementPolicy->invalidate(blk->replacementData);
 }
 
+void
+BaseSetAssoc::invalidateDDIO(CacheBlk *blk)
+{
+    BaseTags::invalidate(blk);
+
+    // Decrease the number of tags in use
+    stats.tagsInUse--;
+
+    // Invalidate replacement data
+    replacementPolicy->invalidateDDIO(blk->replacementData);
+}
+
+
 BaseSetAssoc *
 BaseSetAssocParams::create()
 {

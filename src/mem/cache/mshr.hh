@@ -118,8 +118,10 @@ class MSHR : public QueueEntry, public Printable
     /** Track if we sent this as a whole line write or not */
     bool wasWholeLineWrite;
 
+
     /** True if the entry is just a simple forward from an upper level */
     bool isForward;
+    bool wasBlockIO;
 
     class Target : public QueueEntry::Target {
       public:

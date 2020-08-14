@@ -82,6 +82,11 @@ class L3Cache(Cache):
     mshrs = 32
     tgts_per_mshr = 24
     write_buffers = 16
+    
+    # DDIO LLC 
+    repl_policy = LRURP()
+    ddio_way_part = 4
+    is_llc = True
 
 class IOCache(Cache):
     assoc = 8

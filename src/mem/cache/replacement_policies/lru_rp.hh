@@ -47,11 +47,13 @@ class LRURP : public BaseReplacementPolicy
     {
         /** Tick on which the entry was last touched. */
         Tick lastTouchTick;
+        /** ddio related - is this invalidated due to an IO write?*/
+        bool ioInvalidated;
 
         /**
          * Default constructor. Invalidate data.
          */
-        LRUReplData() : lastTouchTick(0) {}
+        LRUReplData() : lastTouchTick(0), ioInvalidated(false) {}
     };
 
   public:
@@ -76,6 +78,9 @@ class LRURP : public BaseReplacementPolicy
      */
     void invalidate(const std::shared_ptr<ReplacementData>& replacement_data)
                                                               const override;
+    void invalidateDDIO(const std::shared_ptr<ReplacementData>& replacement_data)
+        const override;
+
 
     /**
      * Touch an entry to update its replacement data.
@@ -103,6 +108,8 @@ class LRURP : public BaseReplacementPolicy
      */
     ReplaceableEntry* getVictim(const ReplacementCandidates& candidates) const
                                                                      override;
+    ReplaceableEntry* getVictimWayPart(const ReplacementCandidates& candidates,
+        int32_t way_part = -1) const override;
 
     /**
      * Instantiate a replacement data entry.

@@ -154,7 +154,7 @@ Cache::satisfyRequest(PacketPtr pkt, CacheBlk *blk,
 
 bool
 Cache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
-              PacketList &writebacks)
+              PacketList &writebacks, bool is_ddio)
 {
 
     if (pkt->req->isUncacheable()) {
@@ -178,7 +178,7 @@ Cache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
         return false;
     }
 
-    return BaseCache::access(pkt, blk, lat, writebacks);
+    return BaseCache::access(pkt, blk, lat, writebacks, is_ddio);
 }
 
 void
@@ -526,10 +526,14 @@ Cache::createMissPacket(PacketPtr cpu_pkt, CacheBlk *blk,
         //   it does not fill it will have to writeback the dirty data
         //   immediately which generates uneccesary writebacks).
         bool force_clean_rsp = isReadOnly || clusivity == Enums::mostly_excl;
-        cmd = needsWritable ? MemCmd::ReadExReq :
+        cmd = (needsWritable || (isIOCache && ddioDisabled))? MemCmd::ReadExReq :
             (force_clean_rsp ? MemCmd::ReadCleanReq : MemCmd::ReadSharedReq);
     }
     PacketPtr pkt = new Packet(cpu_pkt->req, cmd, blkSize);
+
+    if (isIOCache){
+        pkt->setBlockIO();
+    }
 
     // if there are upstream caches that have already marked the
     // packet as having sharers (not passing writable), pass that info
@@ -923,6 +927,10 @@ Cache::cleanEvictBlk(CacheBlk *blk)
     pkt->allocate();
     DPRINTF(Cache, "Create CleanEvict %s\n", pkt->print());
 
+    if (isIOCache){
+        pkt->setBlockIO();
+    }
+
     return pkt;
 }
 
@@ -1182,7 +1190,7 @@ Cache::handleSnoop(PacketPtr pkt, CacheBlk *blk, bool is_timing,
     // Do this last in case it deallocates block data or something
     // like that
     if (blk_valid && invalidate) {
-        invalidateBlock(blk);
+        invalidateBlock(blk, isLLCIOInvalid(pkt));
         DPRINTF(Cache, "new state is %s\n", blk->print());
     }
 

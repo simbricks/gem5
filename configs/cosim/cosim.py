@@ -39,6 +39,7 @@ def makeCowDisks(disk_paths):
 class MemBus(SystemXBar):
     badaddr_responder = BadAddr()
     default = Self.badaddr_responder.pio
+    snoop_filter = NULL
 
 def fillInCmdline(mdesc, template, **kwargs):
     kwargs.setdefault('rootdev', mdesc.rootdev())
@@ -336,9 +337,26 @@ def build_system(np):
         ObjectList.is_kvm_cpu(FutureClass):
         sys.kvm_vm = KvmVM()
 
-    if options.caches or options.l2cache:
+    CacheConfig.config_cache(options, sys)
+    if options.caches and options.l3cache and options.ddio_enabled:
         # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges)
+        sys.iocache = IOCache(addr_ranges = sys.mem_ranges, 
+                              is_iocache = True,
+                              ddio_enabled = True,
+                              assoc = 16, tag_latency = 2,
+                              data_latency = 2, response_latency = 2,
+                              write_buffers = 64)
+        sys.iocache.cpu_side = sys.iobus.master
+        sys.iocache.mem_side = sys.tol3bus.slave
+
+    elif options.caches or options.l2cache:
+        # By default the IOCache runs at the system clock
+        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,                              
+                              is_iocache = True,
+                              ddio_disabled = options.ddio_disabled,
+                              assoc = 16, tag_latency = 2,
+                              data_latency = 2, response_latency = 2,
+                              write_buffers = 64)
         sys.iocache.cpu_side = sys.iobus.master
         sys.iocache.mem_side = sys.membus.slave
     elif not options.external_memory_system:
@@ -380,7 +398,6 @@ def build_system(np):
         not options.fast_forward:
         CpuConfig.config_etrace(TestCPUClass, sys.cpu, options)
 
-    CacheConfig.config_cache(options, sys)
 
     MemConfig.config_mem(options, sys)
 
