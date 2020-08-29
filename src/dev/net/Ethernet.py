@@ -284,9 +284,9 @@ class Cosim(EtherDevBase):
     shm_path = Param.String("Shared memory path")
 
     sync = Param.Bool(False, "Synchronize over PCI")
-    poll_interval = Param.Latency('100ns', "poll interval size")
-    sync_tx_interval = Param.Latency('500ns', "interval between syncs")
-    pci_asychrony = Param.Latency('500ns', "poll interval size")
+    poll_interval = Param.Latency('1us', "poll interval size")
+    sync_tx_interval = Param.Latency('250ns', "interval between syncs")
+    pci_asychrony = Param.Latency('500ns', "PCI latency")
 
     VendorID = 0x5543
     DeviceID = 0x1001

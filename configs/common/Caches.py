@@ -90,11 +90,11 @@ class L3Cache(Cache):
 
 class IOCache(Cache):
     assoc = 8
-    tag_latency = 50
-    data_latency = 50
-    response_latency = 50
+    tag_latency = 2
+    data_latency = 2
+    response_latency = 2
     mshrs = 20
-    size = '1kB'
+    size = '32kB'
     tgts_per_mshr = 12
 
 class PageTableWalkerCache(Cache):

@@ -54,7 +54,7 @@ class PciDevice(DmaDevice):
     pci_func = Param.Int("PCI function code")
 
     pio_latency = Param.Latency('30ns', "Programmed IO latency")
-    config_latency = Param.Latency('20ns', "Config read or write latency")
+    config_latency = Param.Latency('10ns', "Config read or write latency")
 
     VendorID = Param.UInt16("Vendor ID")
     DeviceID = Param.UInt16("Device ID")

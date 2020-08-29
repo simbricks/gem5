@@ -105,7 +105,14 @@ def config_cache(options, system):
             system.l2.mem_side = system.tol3bus.slave
             system.l3.cpu_side = system.tol3bus.master
             system.l3.mem_side = system.membus.slave
-
+            if options.l2_hwp_type:
+                hwpClass = ObjectList.hwp_list.get(options.l2_hwp_type)
+                if system.l2.prefetcher != "Null":
+                    print("Warning: l2-hwp-type is set (", hwpClass, "), but",
+                        "the current l2 has a default Hardware Prefetcher",
+                        "of type", type(system.l2.prefetcher), ", using the",
+                        "specified by the flag option.")
+                system.l2.prefetcher = hwpClass()
 
         else:
             # Provide a clock for the L2 and the L1-to-L2 bus here as they

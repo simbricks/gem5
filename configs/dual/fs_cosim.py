@@ -1,3 +1,44 @@
+# Copyright (c) 2010-2013, 2016, 2019 ARM Limited
+# Copyright (c) 2020 Barkhausen Institut
+# All rights reserved.
+#
+# The license below extends only to copyright in the software and shall
+# not be construed as granting a license to any other intellectual
+# property including but not limited to intellectual property relating
+# to a hardware implementation of the functionality of the software
+# licensed hereunder.  You may use the software subject to the license
+# terms below provided that you ensure that this notice is replicated
+# unmodified and in its entirety in all distributions of the software,
+# modified or unmodified, in source code or in binary form.
+#
+# Copyright (c) 2012-2014 Mark D. Hill and David A. Wood
+# Copyright (c) 2009-2011 Advanced Micro Devices, Inc.
+# Copyright (c) 2006-2007 The Regents of The University of Michigan
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met: redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer;
+# redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution;
+# neither the name of the copyright holders nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 from __future__ import print_function
 from __future__ import absolute_import
 
@@ -7,7 +48,7 @@ import sys
 import m5
 from m5.defines import buildEnv
 from m5.objects import *
-from m5.util import addToPath, fatal, warn, convert
+from m5.util import addToPath, fatal, warn
 from m5.util.fdthelper import *
 
 addToPath('../')
@@ -28,6 +69,7 @@ class CowIdeDisk(IdeDisk):
     def childImage(self, ci):
         self.image.child.image_file = ci
 
+
 def makeCowDisks(disk_paths):
     disks = []
     for disk_path in disk_paths:
@@ -41,11 +83,13 @@ class MemBus(SystemXBar):
     default = Self.badaddr_responder.pio
     snoop_filter = NULL
 
+
 def fillInCmdline(mdesc, template, **kwargs):
     kwargs.setdefault('rootdev', mdesc.rootdev())
     kwargs.setdefault('mem', mdesc.mem())
     kwargs.setdefault('script', mdesc.script())
     return template % kwargs
+
 
 def connectX86ClassicSystem(x86_sys, numCPUs):
     # Constants similar to x86_traits.hh
@@ -91,6 +135,7 @@ def connectX86ClassicSystem(x86_sys, numCPUs):
 
     x86_sys.system_port = x86_sys.membus.slave
 
+
 def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     self = System()
 
@@ -121,30 +166,9 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
         self.mem_ranges = [AddrRange('3GB'),
             AddrRange(Addr('4GB'), size = excess_mem_size)]
 
-    class PCIPc(Pc):
-        ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
-                         InterruptLine=15, InterruptPin=1,
-                         BAR0=0xC0000000,
-                         CapabilityPtr=64,
-                         MSICAPBaseOffset=64,
-                         MSICAPCapId=0x5,
-                         MSICAPMsgCtrl=0x8a,
-                         uxsocket_path=options.cosim_pci,
-                         shm_path=options.cosim_shm,
-                         sync=options.cosim_sync,
-                         poll_interval='1us',
-                         pci_asychrony='500ns')
-
-        def attachIO(self, bus, dma_ports = []):
-            super(PCIPc, self).attachIO(bus, dma_ports)
-            self.ethernet.pio = bus.master
-            self.ethernet.dma = bus.slave
-
-
     # Platform
-    self.pc = PCIPc()
-    self.pc.com_1.device = Terminal(port = options.termport, outfile =
-            'stdoutput')
+    self.pc = Pc()
+    #self.pc.com_1.device = Terminal(port = options.termport, outfile = 'stdoutput')
 
     # Create and connect the busses required by each memory system
     connectX86ClassicSystem(self, numCPUs)
@@ -186,15 +210,6 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     connect_busses = X86IntelMPBusHierarchy(bus_id=1,
             subtractive_decode=True, parent_bus=0)
     ext_entries.append(connect_busses)
-    pci_dev2_inta = X86IntelMPIOIntAssignment(
-            interrupt_type = 'INT',
-            polarity = 'ConformPolarity',
-            trigger = 'ConformTrigger',
-            source_bus_id = 0,
-            source_bus_irq = 0 + (2 << 2),
-            dest_io_apic_id = io_apic.id,
-            dest_io_apic_intin = 17)
-    base_entries.append(pci_dev2_inta)
     pci_dev4_inta = X86IntelMPIOIntAssignment(
             interrupt_type = 'INT',
             polarity = 'ConformPolarity',
@@ -231,6 +246,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     workload.intel_mp_table.ext_entries = ext_entries
 
     return self
+
 
 def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
                        cmdline=None):
@@ -281,6 +297,7 @@ def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
     self.workload.command_line = fillInCmdline(mdesc, cmdline)
     return self
 
+
 def cmd_line_template():
     if options.command_line and options.command_line_file:
         print("Error: --command-line and --command-line-file are "
@@ -292,77 +309,80 @@ def cmd_line_template():
         return open(options.command_line_file).read().strip()
     return None
 
-def build_system(np):
+def build_test_system(np):
     cmdline = cmd_line_template()
-    sys = makeLinuxX86System(test_mem_mode, np, bm[0], options.ruby,
-                                  cmdline=cmdline)
+    test_sys = makeLinuxX86System(test_mem_mode, np, bm[0], options.ruby, cmdline=cmdline)
 
     # Set the cache line size for the entire system
-    sys.cache_line_size = options.cacheline_size
+    test_sys.cache_line_size = options.cacheline_size
 
     # Create a top-level voltage domain
-    sys.voltage_domain = VoltageDomain(voltage = options.sys_voltage)
+    test_sys.voltage_domain = VoltageDomain(voltage = options.sys_voltage)
 
     # Create a source clock for the system and set the clock period
-    sys.clk_domain = SrcClockDomain(clock =  options.sys_clock,
-            voltage_domain = sys.voltage_domain)
+    test_sys.clk_domain = SrcClockDomain(clock =  options.sys_clock,
+            voltage_domain = test_sys.voltage_domain)
 
     # Create a CPU voltage domain
-    sys.cpu_voltage_domain = VoltageDomain()
+    test_sys.cpu_voltage_domain = VoltageDomain()
 
     # Create a source clock for the CPUs and set the clock period
-    sys.cpu_clk_domain = SrcClockDomain(clock = options.cpu_clock,
+    test_sys.cpu_clk_domain = SrcClockDomain(clock = options.cpu_clock,
                                              voltage_domain =
-                                             sys.cpu_voltage_domain)
+                                             test_sys.cpu_voltage_domain)
+
 
     if options.kernel is not None:
-        sys.workload.object_file = binary(options.kernel)
+        test_sys.workload.object_file = binary(options.kernel)
 
     if options.script is not None:
-        sys.readfile = options.script
+        test_sys.readfile = options.script
 
     if options.lpae:
-        sys.have_lpae = True
+        test_sys.have_lpae = True
 
     if options.virtualisation:
-        sys.have_virtualization = True
+        test_sys.have_virtualization = True
 
-    sys.init_param = options.init_param
+    test_sys.init_param = options.init_param
 
     # For now, assign all the CPUs to the same clock domain
-    sys.cpu = [TestCPUClass(clk_domain=sys.cpu_clk_domain, cpu_id=i)
+    test_sys.cpu = [TestCPUClass(clk_domain=test_sys.cpu_clk_domain, cpu_id=i)
                     for i in range(np)]
+    
 
     if ObjectList.is_kvm_cpu(TestCPUClass) or \
         ObjectList.is_kvm_cpu(FutureClass):
-        sys.kvm_vm = KvmVM()
+        test_sys.kvm_vm = KvmVM()
 
-    CacheConfig.config_cache(options, sys)
-    if options.caches and options.l3cache and options.ddio_enabled:
+    CacheConfig.config_cache(options, test_sys)
+    
+    if options.caches or options.l3cache and options.ddio_enabled:
         # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges, 
+        test_sys.iocache = IOCache(addr_ranges = test_sys.mem_ranges, 
                               is_iocache = True,
                               ddio_enabled = True,
                               assoc = 16, tag_latency = 2,
                               data_latency = 2, response_latency = 2,
                               write_buffers = 64)
-        sys.iocache.cpu_side = sys.iobus.master
-        sys.iocache.mem_side = sys.tol3bus.slave
+        test_sys.iocache.cpu_side = test_sys.iobus.master
+        test_sys.iocache.mem_side = test_sys.tol3bus.slave
 
     elif options.caches or options.l2cache:
         # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,                              
+        test_sys.iocache = IOCache(addr_ranges = test_sys.mem_ranges,                              
                               is_iocache = True,
                               ddio_disabled = options.ddio_disabled,
                               assoc = 16, tag_latency = 2,
                               data_latency = 2, response_latency = 2,
                               write_buffers = 64)
-        sys.iocache.cpu_side = sys.iobus.master
-        sys.iocache.mem_side = sys.membus.slave
+        test_sys.iocache.cpu_side = test_sys.iobus.master
+        test_sys.iocache.mem_side = test_sys.membus.slave
+
     elif not options.external_memory_system:
-        sys.iobridge = Bridge(delay='50ns', ranges = sys.mem_ranges)
-        sys.iobridge.slave = sys.iobus.master
-        sys.iobridge.master = sys.membus.slave
+        test_sys.iobridge = Bridge(delay='50ns', ranges = test_sys.mem_ranges)
+        test_sys.iobridge.slave = test_sys.iobus.master
+        test_sys.iobridge.master = test_sys.membus.slave
 
     # Sanity check
     if options.simpoint_profile:
@@ -373,19 +393,19 @@ def build_system(np):
 
     for i in range(np):
         if options.simpoint_profile:
-            sys.cpu[i].addSimPointProbe(options.simpoint_interval)
+            test_sys.cpu[i].addSimPointProbe(options.simpoint_interval)
         if options.checker:
-            sys.cpu[i].addCheckerCpu()
+            test_sys.cpu[i].addCheckerCpu()
         if not ObjectList.is_kvm_cpu(TestCPUClass):
             if options.bp_type:
                 bpClass = ObjectList.bp_list.get(options.bp_type)
-                sys.cpu[i].branchPred = bpClass()
+                test_sys.cpu[i].branchPred = bpClass()
             if options.indirect_bp_type:
                 IndirectBPClass = ObjectList.indirect_bp_list.get(
                     options.indirect_bp_type)
-                sys.cpu[i].branchPred.indirectBranchPred = \
+                test_sys.cpu[i].branchPred.indirectBranchPred = \
                     IndirectBPClass()
-        sys.cpu[i].createThreads()
+        test_sys.cpu[i].createThreads()
 
     # If elastic tracing is enabled when not restoring from checkpoint and
     # when not fast forwarding using the atomic cpu, then check that the
@@ -396,26 +416,79 @@ def build_system(np):
     # elastic trace probe is attached to the switch CPUs.
     if options.elastic_trace_en and options.checkpoint_restore == None and \
         not options.fast_forward:
-        CpuConfig.config_etrace(TestCPUClass, sys.cpu, options)
+        CpuConfig.config_etrace(TestCPUClass, test_sys.cpu, options)
 
 
-    MemConfig.config_mem(options, sys)
+    MemConfig.config_mem(options, test_sys)
 
-    return sys
+    return test_sys
+
+def build_drive_system(np):
+    # driver system CPU is always simple, so is the memory
+    # Note this is an assignment of a class, not an instance.
+    DriveCPUClass = AtomicSimpleCPU
+    drive_mem_mode = 'atomic'
+    DriveMemClass = SimpleMemory
+
+    cmdline = cmd_line_template()
+    if buildEnv['TARGET_ISA'] == 'mips':
+        drive_sys = makeLinuxMipsSystem(drive_mem_mode, bm[1], cmdline=cmdline)
+    elif buildEnv['TARGET_ISA'] == 'sparc':
+        drive_sys = makeSparcSystem(drive_mem_mode, bm[1], cmdline=cmdline)
+    elif buildEnv['TARGET_ISA'] == 'x86':
+        drive_sys = makeLinuxX86System(drive_mem_mode, np, bm[1],
+                                       cmdline=cmdline)
+    elif buildEnv['TARGET_ISA'] == 'arm':
+        drive_sys = makeArmSystem(drive_mem_mode, options.machine_type, np,
+                                  bm[1], options.dtb_filename, cmdline=cmdline)
+
+    # Create a top-level voltage domain
+    drive_sys.voltage_domain = VoltageDomain(voltage = options.sys_voltage)
+
+    # Create a source clock for the system and set the clock period
+    drive_sys.clk_domain = SrcClockDomain(clock =  options.sys_clock,
+            voltage_domain = drive_sys.voltage_domain)
+
+    # Create a CPU voltage domain
+    drive_sys.cpu_voltage_domain = VoltageDomain()
+
+    # Create a source clock for the CPUs and set the clock period
+    drive_sys.cpu_clk_domain = SrcClockDomain(clock = options.cpu_clock,
+                                              voltage_domain =
+                                              drive_sys.cpu_voltage_domain)
+
+    drive_sys.cpu = DriveCPUClass(clk_domain=drive_sys.cpu_clk_domain,
+                                  cpu_id=0)
+    drive_sys.cpu.createThreads()
+    drive_sys.cpu.createInterruptController()
+    drive_sys.cpu.connectAllPorts(drive_sys.membus)
+    if options.kernel is not None:
+        drive_sys.workload.object_file = binary(options.kernel)
+
+    if ObjectList.is_kvm_cpu(DriveCPUClass):
+        drive_sys.kvm_vm = KvmVM()
+
+    drive_sys.iobridge = Bridge(delay='50ns',
+                                ranges = drive_sys.mem_ranges)
+    drive_sys.iobridge.slave = drive_sys.iobus.master
+    drive_sys.iobridge.master = drive_sys.membus.slave
+
+    # Create the appropriate memory controllers and connect them to the
+    # memory bus
+    drive_sys.mem_ctrls = [DriveMemClass(range = r)
+                           for r in drive_sys.mem_ranges]
+    for i in range(len(drive_sys.mem_ctrls)):
+        drive_sys.mem_ctrls[i].port = drive_sys.membus.master
+
+    drive_sys.init_param = options.init_param
+
+    return drive_sys
 
 # Add options
 parser = optparse.OptionParser()
 Options.addCommonOptions(parser)
 Options.addFSOptions(parser)
 
-parser.add_option("--termport", action="store", type="int",
-        default="3456", help="port for terminal to listen on")
-parser.add_option("--cosim-pci", action="store", type="string",
-        default="/tmp/cosim-pci", help="Cosim PCI Unix socket")
-parser.add_option("--cosim-shm", action="store", type="string",
-        default="/dev/shm/dummy_nic_shm", help="Cosim shared memory region")
-parser.add_option("--cosim-sync", action="store_true",
-        help="Synchronize with cosim pci device")
 
 (options, args) = parser.parse_args()
 
@@ -429,11 +502,27 @@ if args:
 # Match the memories with the CPUs, based on the options for the test system
 TestMemClass = Simulation.setMemClass(options)
 
-bm = [SysConfig(disks=options.disk_image, rootdev=options.root_device,
-                mem=options.mem_size, os_type=options.os_type)]
+if options.dual:
+    bm = [SysConfig(disks=options.disk_image, rootdev=options.root_device,
+                        mem=options.mem_size, os_type=options.os_type),
+            SysConfig(disks=options.disk_image, rootdev=options.root_device,
+                        mem=options.mem_size, os_type=options.os_type)]
+else:
+    bm = [SysConfig(disks=options.disk_image, rootdev=options.root_device,
+                        mem=options.mem_size, os_type=options.os_type)]
+
 np = options.num_cpus
-sys = build_system(np)
-root = Root(full_system=True, system=sys)
+
+test_sys = build_test_system(np)
+if len(bm) == 2:
+    drive_sys = build_test_system(np)
+    root = makeDualRoot(True, test_sys, drive_sys, options.etherdump)
+
+elif len(bm) == 1:
+    root = Root(full_system=True, system=test_sys)
+else:
+    print("Error I don't know how to create more than 2 systems.")
+    sys.exit(1)
 
 if options.timesync:
     root.time_sync_enable = True
@@ -441,5 +530,5 @@ if options.timesync:
 if options.frame_capture:
     VncServer.frame_capture = True
 
-Simulation.setWorkCountOptions(sys, options)
-Simulation.run(options, root, sys, FutureClass)
+Simulation.setWorkCountOptions(test_sys, options)
+Simulation.run(options, root, test_sys, FutureClass)
