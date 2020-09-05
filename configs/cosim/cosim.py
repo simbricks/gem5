@@ -132,7 +132,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
                          uxsocket_path=options.cosim_pci,
                          shm_path=options.cosim_shm,
                          sync=options.cosim_sync,
-                         poll_interval='1us',
+                         poll_interval='100us',
                          pci_asychrony='500ns')
 
         def attachIO(self, bus, dma_ports = []):
