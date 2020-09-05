@@ -113,6 +113,14 @@ def config_cache(options, system):
                         "of type", type(system.l2.prefetcher), ", using the",
                         "specified by the flag option.")
                 system.l2.prefetcher = hwpClass()
+            if options.l3_hwp_type:
+                hwpClass = ObjectList.hwp_list.get(options.l3_hwp_type)
+                if system.l3.prefetcher != "Null":
+                    print("Warning: l3-hwp-type is set (", hwpClass, "), but",
+                        "the current l3 has a default Hardware Prefetcher",
+                        "of type", type(system.l3.prefetcher), ", using the",
+                        "specified by the flag option.")
+                system.l3.prefetcher = hwpClass()
 
         else:
             # Provide a clock for the L2 and the L1-to-L2 bus here as they
@@ -217,6 +225,7 @@ def config_cache(options, system):
         system.cpu[i].createInterruptController()
         if options.l2cache:
             system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
+            
         elif options.external_memory_system:
             system.cpu[i].connectUncachedPorts(system.membus)
         else:
