@@ -121,10 +121,26 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
         self.mem_ranges = [AddrRange('3GB'),
             AddrRange(Addr('4GB'), size = excess_mem_size)]
 
+    other_params = {}
+    if options.cosim_type == 'corundum':
+        other_params['BAR0Size'] = '32MB'
+        other_params['BAR0'] = 0xC0000000
+        other_params['VendorID'] = 0x5543
+        other_params['DeviceID'] = 0x1001
+    elif options.cosim_type == 'i40e':
+        other_params['BAR0Size'] = '4MB'
+        other_params['BAR0'] = 0xC0000000
+        other_params['BAR2Size'] = '32B'
+        other_params['BAR2'] = 0x2000
+        other_params['BAR2LegacyIO'] = True
+        other_params['VendorID'] = 0x8086
+        other_params['DeviceID'] = 0x1572
+    else:
+        fatal('Unsupported cosim nic type (' + options.cosim_type + ')')
+
     class PCIPc(Pc):
         ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
                          InterruptLine=15, InterruptPin=1,
-                         BAR0=0xC0000000,
                          CapabilityPtr=64,
                          MSICAPBaseOffset=64,
                          MSICAPCapId=0x5,
@@ -133,7 +149,9 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
                          shm_path=options.cosim_shm,
                          sync=options.cosim_sync,
                          poll_interval='100us',
-                         pci_asychrony='500ns')
+                         pci_asychrony='500ns',
+                         LegacyIOBase = 0x8000000000000000,
+                         **other_params)
 
         def attachIO(self, bus, dma_ports = []):
             super(PCIPc, self).attachIO(bus, dma_ports)
@@ -416,6 +434,8 @@ parser.add_option("--cosim-shm", action="store", type="string",
         default="/dev/shm/dummy_nic_shm", help="Cosim shared memory region")
 parser.add_option("--cosim-sync", action="store_true",
         help="Synchronize with cosim pci device")
+parser.add_option("--cosim-type", action="store", type="string",
+        default="corundum", help="Device type (corundum/i40e)")
 
 (options, args) = parser.parse_args()
 
