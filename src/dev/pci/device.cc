@@ -309,6 +309,7 @@ PciDevice::readConfig(PacketPtr pkt)
             default:
                 panic("invalid access size(?) for PCI configspace!\n");
         }
+        pkt->makeAtomicResponse();
     } else {
         panic("Out-of-range access to PCI config space!\n");
     }
