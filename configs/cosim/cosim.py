@@ -148,8 +148,9 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
                          uxsocket_path=options.cosim_pci,
                          shm_path=options.cosim_shm,
                          sync=options.cosim_sync,
-                         poll_interval='100us',
-                         pci_asychrony='500ns',
+                         poll_interval=('%dns' % (options.cosim_poll_int)),
+                         pci_asychrony=('%dns' % (options.cosim_pci_lat)),
+                         sync_tx_interval=('%dns' % (options.cosim_sync_int)),
                          LegacyIOBase = 0x8000000000000000,
                          **other_params)
 
@@ -434,6 +435,14 @@ parser.add_option("--cosim-shm", action="store", type="string",
         default="/dev/shm/dummy_nic_shm", help="Cosim shared memory region")
 parser.add_option("--cosim-sync", action="store_true",
         help="Synchronize with cosim pci device")
+
+parser.add_option("--cosim-pci-lat", action="store", type="int",
+        default=500, help="Cosim PCI latency in ns")
+parser.add_option("--cosim-sync-int", action="store", type="int",
+        default=100, help="Cosim sync interval in ns")
+parser.add_option("--cosim-poll-int", action="store", type="int",
+        default=100000, help="Cosim poll interval in ns")
+
 parser.add_option("--cosim-type", action="store", type="string",
         default="corundum", help="Device type (corundum/i40e)")
 
