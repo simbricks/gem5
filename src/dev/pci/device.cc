@@ -160,10 +160,13 @@ PciDevice::PciDevice(const PciDeviceParams *p)
         }
         msix_pba.resize(pba_size, tmp2);
     }
-    MSIX_TABLE_OFFSET = msixcap.mtab & 0xfffffffc;
+
+    MSIX_TABLE_BAR = msixcap.mtab & 7;
+    MSIX_TABLE_OFFSET = msixcap.mtab & 0xfffffff8;
     MSIX_TABLE_END = MSIX_TABLE_OFFSET +
                      (msixcap_mxc_ts + 1) * sizeof(MSIXTable);
-    MSIX_PBA_OFFSET = msixcap.mpba & 0xfffffffc;
+    MSIX_PBA_BAR = msixcap.mtab & 7;
+    MSIX_PBA_OFFSET = msixcap.mpba & 0xfffffff8;
     MSIX_PBA_END = MSIX_PBA_OFFSET +
                    ((msixcap_mxc_ts + 1) / MSIXVECS_PER_PBA)
                    * sizeof(MSIXPbaEntry);
@@ -293,6 +296,12 @@ PciDevice::readConfig(PacketPtr pkt)
         /* read from MSI cap */
         readConfigBytes(pkt, offset, MSICAP_BASE, msicap.data,
                 sizeof(msicap));
+    } else if (MSIXCAP_BASE && offset >= MSIXCAP_BASE &&
+            offset < MSIXCAP_BASE + sizeof(msixcap))
+    {
+        /* read from MSI cap */
+        readConfigBytes(pkt, offset, MSIXCAP_BASE, msixcap.data,
+                sizeof(msixcap));
     } else if (offset <= PCI_CONFIG_SIZE) {
         warn_once("Device specific PCI config space "
                   "not implemented for %s!\n", this->name());
@@ -339,6 +348,13 @@ PciDevice::writeConfig(PacketPtr pkt)
         /* write to msi cap */
         writeConfigBytes(pkt, offset, MSICAP_BASE, msicap.data,
                 sizeof(msicap));
+        return configDelay;
+    } else if (MSIXCAP_BASE && offset >= MSIXCAP_BASE &&
+            offset < MSIXCAP_BASE + sizeof(msixcap))
+    {
+        /* write to msi-x cap */
+        writeConfigBytes(pkt, offset, MSIXCAP_BASE, msixcap.data,
+                sizeof(msixcap));
         return configDelay;
     } else if (offset >= PCI_DEVICE_SPECIFIC &&
             offset <= PCI_CONFIG_SIZE)
