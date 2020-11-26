@@ -85,6 +85,8 @@ public:
     void init() override;
     virtual SlavePort &pciPioPort() override;
 
+    void msi_signal(uint16_t vec);
+
     void readAsync(PciPioCompl &comp);
     void writeAsync(PciPioCompl &comp);
 

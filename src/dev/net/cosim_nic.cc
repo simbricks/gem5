@@ -243,7 +243,6 @@ Device::pollQueues()
     DMACompl *dc;
     PciPioCompl *pc;
     uint64_t rid, addr, len;
-    uint32_t vec;
     uint8_t ty;
 
     msg = d2hPoll();
@@ -292,25 +291,11 @@ Device::pollQueues()
         case COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT:
             /* Interrupt */
             intr = &msg->interrupt;
-            assert(intr->inttype == COSIM_PCIE_PROTO_INT_MSI);
-            assert(intr->vector < 32);
-
-            vec = intr->vector;
-            DPRINTF(Ethernet, "cosim: received intr vec %u\n", vec);
-
-            if ((msicap.mc & 0x1) != 0 &&
-                    ((msicap.mmask & (1 << intr->vector)) == 0))
-            {
-                DPRINTF(Ethernet, "cosim: MSI addr=%x val=%x mask=%x\n",
-                        msicap.ma, msicap.md, msicap.mmask);
-                dc = new DMACompl(this, rid, 4, DMACompl::MSI, name());
-                memcpy(dc->buf, &msicap.md, 2);
-                memset(dc->buf + 2, 0, 2);
-
-                dmaWrite(pciToDma(msicap.ma | ((uint64_t) msicap.mua << 32)),
-                        4, dc, dc->buf, 0);
+            if (intr->inttype == COSIM_PCIE_PROTO_INT_MSI) {
+                assert(intr->vector < 32);
+                msi_signal(intr->vector);
             } else {
-                DPRINTF(Ethernet, "cosim: MSI masked\n");
+                panic("unsupported inttype=0x%x", intr->inttype);
             }
             break;
 
@@ -348,6 +333,29 @@ Device::pollQueues()
 
     d2hDone(msg);
     return true;
+}
+
+void
+Device::msi_signal(uint16_t vec)
+{
+    DMACompl *dc;
+
+    DPRINTF(Ethernet, "cosim: received intr vec %u\n", vec);
+
+    if ((msicap.mc & 0x1) != 0 &&
+            ((msicap.mmask & (1 << vec)) == 0))
+    {
+        DPRINTF(Ethernet, "cosim: MSI addr=%x val=%x mask=%x\n",
+                msicap.ma, msicap.md, msicap.mmask);
+        dc = new DMACompl(this, 0, 4, DMACompl::MSI, name());
+        memcpy(dc->buf, &msicap.md, 2);
+        memset(dc->buf + 2, 0, 2);
+
+        dmaWrite(pciToDma(msicap.ma | ((uint64_t) msicap.mua << 32)),
+                4, dc, dc->buf, 0);
+    } else {
+        DPRINTF(Ethernet, "cosim: MSI masked\n");
+    }
 }
 
 void
