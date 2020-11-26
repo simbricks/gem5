@@ -77,6 +77,9 @@ Device::readAsync(PciPioCompl &comp)
         panic("Invalid PCI memory address\n");
     }
 
+    if (readMsix(comp, daddr, bar))
+        return;
+
     /* Send read message */
     volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
     volatile struct cosim_pcie_proto_h2d_read *read = &h2d_msg->read;
@@ -99,6 +102,9 @@ Device::writeAsync(PciPioCompl &comp)
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
         panic("Invalid PCI memory address\n");
     }
+
+    if (writeMsix(comp, daddr, bar))
+        return;
 
     /* Send write message */
     volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
@@ -294,6 +300,8 @@ Device::pollQueues()
             if (intr->inttype == COSIM_PCIE_PROTO_INT_MSI) {
                 assert(intr->vector < 32);
                 msi_signal(intr->vector);
+            } else if (intr->inttype == COSIM_PCIE_PROTO_INT_MSIX) {
+                msix_signal(intr->vector);
             } else {
                 panic("unsupported inttype=0x%x", intr->inttype);
             }
@@ -356,6 +364,108 @@ Device::msi_signal(uint16_t vec)
     } else {
         DPRINTF(Ethernet, "cosim: MSI masked\n");
     }
+}
+
+void
+Device::msix_signal(uint16_t vec)
+{
+    DMACompl *dc;
+    MSIXTable &te = msix_table[vec];
+    MSIXPbaEntry &pe = msix_pba[vec / MSIXVECS_PER_PBA];
+
+    if ((te.fields.vec_ctrl & 1)) {
+        warn("msix_signal(%u): TODO: masked", vec);
+
+        pe.bits |= 1 << (vec % MSIXVECS_PER_PBA);
+        return;
+    }
+
+    dc = new DMACompl(this, 0, 4, DMACompl::MSI, name());
+    memcpy(dc->buf, &te.fields.msg_data, 4);
+
+    uint64_t addr = te.fields.addr_hi;
+    addr = (addr << 32) | te.fields.addr_lo;
+    dmaWrite(pciToDma(addr), 4, dc, dc->buf, 0);
+}
+
+bool
+Device::readMsix(PciPioCompl &comp, Addr addr, int bar)
+{
+    if (!MSIXCAP_BASE)
+        return false;
+
+    if (bar == MSIX_TABLE_BAR && addr >= MSIX_TABLE_OFFSET &&
+            addr < MSIX_TABLE_END)
+    {
+        uint32_t off = addr - MSIX_TABLE_OFFSET;
+        uint16_t idx = off / 16;
+        uint8_t col = off % 16;
+        MSIXTable &entry = msix_table[idx];
+
+        assert(off % comp.pkt->getSize() == 0);
+
+        comp.pkt->setData((const uint8_t *) entry.data + col);
+        comp.setDone();
+        return true;
+    }
+
+    if (bar == MSIX_PBA_BAR && addr >= MSIX_PBA_OFFSET &&
+            addr < MSIX_PBA_END)
+    {
+        uint32_t off = addr - MSIX_PBA_OFFSET;
+        uint16_t idx = off / (MSIXVECS_PER_PBA / 8);
+        uint16_t col = off % (MSIXVECS_PER_PBA / 8);
+        const MSIXPbaEntry &entry = msix_pba[idx];
+
+        assert(off % comp.pkt->getSize() == 0);
+
+        comp.pkt->setData(((const uint8_t *) &entry) + col);
+        comp.setDone();
+        return true;
+    }
+
+    return false;
+}
+
+bool
+Device::writeMsix(PciPioCompl &comp, Addr addr, int bar)
+{
+    if (!MSIXCAP_BASE)
+        return false;
+
+    if (bar == MSIX_TABLE_BAR && addr >= MSIX_TABLE_OFFSET &&
+            addr < MSIX_TABLE_END)
+    {
+        uint32_t off = addr - MSIX_TABLE_OFFSET;
+        uint16_t idx = off / 16;
+        uint8_t col = off % 16;
+        MSIXTable &entry = msix_table[idx];
+
+        assert(off % comp.pkt->getSize() == 0);
+
+        memcpy((uint8_t *) entry.data + col, comp.pkt->getPtr<uint8_t>(),
+                comp.pkt->getSize());
+        comp.setDone();
+        return true;
+    }
+
+    if (bar == MSIX_PBA_BAR && addr >= MSIX_PBA_OFFSET &&
+            addr < MSIX_PBA_END)
+    {
+        uint32_t off = addr - MSIX_PBA_OFFSET;
+        uint16_t idx = off / (MSIXVECS_PER_PBA / 8);
+        uint16_t col = off % (MSIXVECS_PER_PBA / 8);
+        MSIXPbaEntry &entry = msix_pba[idx];
+
+        assert(off % comp.pkt->getSize() == 0);
+
+        memcpy((uint8_t *) &entry + col, comp.pkt->getPtr<uint8_t>(),
+                comp.pkt->getSize());
+        comp.setDone();
+        return true;
+    }
+
+    return false;
 }
 
 void

@@ -86,6 +86,10 @@ public:
     virtual SlavePort &pciPioPort() override;
 
     void msi_signal(uint16_t vec);
+    void msix_signal(uint16_t vec);
+
+    bool readMsix(PciPioCompl &comp, Addr addr, int bar);
+    bool writeMsix(PciPioCompl &comp, Addr addr, int bar);
 
     void readAsync(PciPioCompl &comp);
     void writeAsync(PciPioCompl &comp);
