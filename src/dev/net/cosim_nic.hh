@@ -91,6 +91,8 @@ public:
     virtual Tick read(PacketPtr pkt) override;
     virtual Tick write(PacketPtr pkt) override;
 
+    virtual Tick writeConfig(PacketPtr pkt) override;
+
     virtual void serialize(CheckpointOut &cp) const override;
     virtual void unserialize(CheckpointIn &cp) override;
 

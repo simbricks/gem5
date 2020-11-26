@@ -149,6 +149,41 @@ Device::write(PacketPtr pkt)
     return 1;
 }
 
+Tick
+Device::writeConfig(PacketPtr pkt)
+{
+    bool intx_before = !!(config.command & PCI_CMD_INTXDIS);
+    bool msi_before = (msicap.mc & 0x1);
+    bool msix_before = (msixcap.mxc & 0x8000);
+
+    Tick t = PciDevice::writeConfig(pkt);
+
+    bool intx_after = !!(config.command & PCI_CMD_INTXDIS);
+    bool msi_after = (msicap.mc & 0x1);
+    bool msix_after = (msixcap.mxc & 0x8000);
+
+    /* send devctrl message if interrupt config changed */
+    if (intx_before != intx_after || msi_before != msi_after ||
+            msix_before != msix_after)
+    {
+        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
+        volatile struct cosim_pcie_proto_h2d_devctrl *devctrl = &msg->devctrl;
+
+        devctrl->flags = 0;
+        if (intx_after)
+            devctrl->flags |= COSIM_PCIE_PROTO_CTRL_INTX_EN;
+        if (msi_after)
+            devctrl->flags |= COSIM_PCIE_PROTO_CTRL_MSI_EN;
+        if (msix_after)
+            devctrl->flags |= COSIM_PCIE_PROTO_CTRL_MSIX_EN;
+
+        devctrl->own_type = COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL |
+            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    }
+
+    return t;
+}
+
 Device::DMACompl::DMACompl(Device *dev_, uint64_t id_, size_t bufsiz_,
         enum ctype ty_, const std::string &name_)
     : EventFunctionWrapper([this]{ done(); }, name_, true), dev(dev_), id(id_),
