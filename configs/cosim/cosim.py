@@ -135,6 +135,16 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
         other_params['BAR2LegacyIO'] = True
         other_params['VendorID'] = 0x8086
         other_params['DeviceID'] = 0x1572
+        # enable msi-x
+        other_params['MSICAPNextCapability'] = 96
+        other_params['MSIXCAPBaseOffset'] = 96
+        other_params['MSIXCAPCapId'] = 0x11
+        other_params['MSIXMsgCtrl'] = 0x7f
+        other_params['MSIXTableOffset'] = 0x0 | 3
+        other_params['MSIXPbaOffset'] = 0x1000 | 3
+        other_params['BAR3Size'] = '32kB'
+        other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
+
     else:
         fatal('Unsupported cosim nic type (' + options.cosim_type + ')')
 
