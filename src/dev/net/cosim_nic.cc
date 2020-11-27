@@ -751,6 +751,7 @@ TimingPioPort::recvTimingReq(PacketPtr pkt)
     if (pkt->isRead()) {
         dev.readAsync(*tpc);
     } else if (pkt->isWrite()) {
+        tpc->keep = true;
         dev.writeAsync(*tpc);
 
         if (pkt->isWrite() && dev.writesPosted && pkt->needsResponse()) {
@@ -760,6 +761,11 @@ TimingPioPort::recvTimingReq(PacketPtr pkt)
             schedTimingResp(pkt, curTick() + 1);
             tpc->pkt = 0;
         }
+
+        if (tpc->done)
+            delete tpc;
+        else
+            tpc->keep = false;
     } else {
         panic("TimingPioPort: unknown packet type");
     }
@@ -771,7 +777,7 @@ void
 TimingPioPort::timingPioCompl(TimingPioCompl &comp)
 {
     if (!comp.needResp) {
-        if (comp.pkt) {
+        if (comp.pkt && !comp.keep) {
             delete comp.pkt;
             comp.pkt = nullptr;
         }
@@ -785,7 +791,7 @@ TimingPioPort::timingPioCompl(TimingPioCompl &comp)
 
 TimingPioCompl::TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt,
         bool needResp_)
-    : PciPioCompl(_pkt), port(_port), needResp(needResp_)
+    : PciPioCompl(_pkt), port(_port), needResp(needResp_), keep(false)
 {
 }
 
@@ -794,7 +800,8 @@ TimingPioCompl::setDone()
 {
     done = true;
     port.timingPioCompl(*this);
-    delete this;
+    if (!keep)
+        delete this;
 }
 
 } // namespace Cosim

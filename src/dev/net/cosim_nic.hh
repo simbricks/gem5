@@ -31,6 +31,7 @@ class TimingPioCompl : public PciPioCompl {
 
   public:
     bool needResp;
+    bool keep;
 
     TimingPioCompl(TimingPioPort &_port, PacketPtr _pkt,
             bool needResp_);
