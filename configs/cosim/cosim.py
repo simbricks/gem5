@@ -369,7 +369,7 @@ def build_system(np):
     CacheConfig.config_cache(options, sys)
     if options.caches and options.l3cache and options.ddio_enabled:
         # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges, 
+        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
                               is_iocache = True,
                               ddio_enabled = True,
                               assoc = 16, tag_latency = 2,
@@ -380,7 +380,7 @@ def build_system(np):
 
     elif options.caches or options.l2cache:
         # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,                              
+        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
                               is_iocache = True,
                               ddio_disabled = options.ddio_disabled,
                               assoc = 16, tag_latency = 2,
@@ -445,6 +445,8 @@ parser.add_option("--cosim-shm", action="store", type="string",
         default="/dev/shm/dummy_nic_shm", help="Cosim shared memory region")
 parser.add_option("--cosim-sync", action="store_true",
         help="Synchronize with cosim pci device")
+parser.add_option("--cosim-sync_mode", action="store", type="int",
+        default=0, help="Synchronization mode: 0 - ModES, 1 - Barrier")
 
 parser.add_option("--cosim-pci-lat", action="store", type="int",
         default=500, help="Cosim PCI latency in ns")
