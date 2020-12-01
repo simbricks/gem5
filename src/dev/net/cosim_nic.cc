@@ -25,6 +25,17 @@ Device::Device(const Params *p)
     if (!nicsimInit(p)) {
         panic("cosim: failed to initialize cosim");
     }
+    switch (p->sync_mode) {
+    case 0:
+        syncMode = SYNC_MODES;
+        break;
+    case 1:
+        syncMode = SYNC_BARRIER;
+        break;
+    default:
+        panic("cosim: unknown sync_mode option");
+    }
+
     DPRINTF(Ethernet, "cosim: device configured\n");
     warn("pollInterval=%u  pciAsync=%u", pollInterval, pciAsynchrony);
 }
@@ -607,7 +618,7 @@ Device::h2dAlloc(bool syncAlloc)
 
     this->h2dPos = (this->h2dPos + 1) % this->h2dEnum;
 
-    if (sync && !syncAlloc)
+    if (sync && !syncAlloc && syncMode != SYNC_BARRIER)
         reschedule(this->syncTxEvent, curTick() + this->syncTxInterval);
 
     return msg;

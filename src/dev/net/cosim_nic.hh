@@ -65,6 +65,10 @@ class TimingPioPort : public QueuedSlavePort
 };
 
 
+enum SyncMode {
+    SYNC_MODES,
+    SYNC_BARRIER
+};
 
 class Interface;
 class Device : public EtherDevBase
@@ -136,6 +140,7 @@ private:
     };
 
     bool sync;
+    SyncMode syncMode;
     bool writesPosted;
     uint64_t pciAsynchrony;
     uint64_t devLastTime;
