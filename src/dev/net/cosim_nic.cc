@@ -3,12 +3,19 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <iostream>
 
 #include <debug/EthernetAll.hh>
 #include <dev/net/cosim_nic.hh>
 
+
 namespace Cosim {
 
+void sigusr1_handler(int dummy)
+{
+    std::cout << "main_time = " << curTick() << std::endl;
+}
 
 Device::Device(const Params *p)
     : EtherDevBase(p), interface(nullptr),
@@ -66,6 +73,7 @@ SlavePort &Device::pciPioPort()
 void
 Device::init()
 {
+    signal(SIGUSR1, sigusr1_handler);
     /* not calling parent init on purpose, as that will cause problems because
      * PIO port is not connected */
     if (!overridePort.isConnected())
