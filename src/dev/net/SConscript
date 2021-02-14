@@ -77,9 +77,10 @@ DebugFlag('DistEthernetCmd')
 Source('i8254xGBe.cc')
 Source('ns_gige.cc')
 Source('sinic.cc')
-Source('cosim_nic.cc')
 
-
+# Simbricks
+if env['USE_SIMBRICKS']:
+    Source('cosim_nic.cc')
 
 CompoundFlag('EthernetAll', [ 'Ethernet', 'EthernetPIO', 'EthernetDMA',
     'EthernetData' , 'EthernetDesc', 'EthernetIntr', 'EthernetSM',

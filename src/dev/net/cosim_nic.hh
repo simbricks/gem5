@@ -4,7 +4,8 @@
 #include <dev/net/etherpkt.hh>
 #include <dev/net/etherdevice.hh>
 #include <dev/net/etherint.hh>
-#include <dev/net/cosim_pcie_proto.h>
+
+#include <simbricks/proto/pcie.h>
 
 namespace Cosim {
 
