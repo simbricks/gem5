@@ -34,10 +34,10 @@ Device::Device(const Params *p)
     }
     switch (p->sync_mode) {
     case 0:
-        syncMode = SYNC_MODES;
+        syncMode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
         break;
     case 1:
-        syncMode = SYNC_BARRIER;
+        syncMode = SIMBRICKS_PROTO_SYNC_BARRIER;
         break;
     default:
         panic("cosim: unknown sync_mode option");
@@ -627,7 +627,7 @@ Device::h2dAlloc(bool syncAlloc)
 
     this->h2dPos = (this->h2dPos + 1) % this->h2dEnum;
 
-    if (sync && !syncAlloc && syncMode != SYNC_BARRIER)
+    if (sync && !syncAlloc && syncMode != SIMBRICKS_PROTO_SYNC_BARRIER)
         reschedule(this->syncTxEvent, curTick() + this->syncTxInterval);
 
     return msg;

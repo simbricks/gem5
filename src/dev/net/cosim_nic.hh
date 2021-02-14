@@ -5,6 +5,7 @@
 #include <dev/net/etherdevice.hh>
 #include <dev/net/etherint.hh>
 
+#include <simbricks/proto/base.h>
 #include <simbricks/proto/pcie.h>
 
 namespace Cosim {
@@ -65,11 +66,6 @@ class TimingPioPort : public QueuedSlavePort
     virtual AddrRangeList getAddrRanges() const;
 };
 
-
-enum SyncMode {
-    SYNC_MODES,
-    SYNC_BARRIER
-};
 
 class Interface;
 class Device : public EtherDevBase
@@ -141,7 +137,7 @@ private:
     };
 
     bool sync;
-    SyncMode syncMode;
+    int syncMode;
     bool writesPosted;
     uint64_t pciAsynchrony;
     uint64_t devLastTime;
