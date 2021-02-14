@@ -100,13 +100,14 @@ Device::readAsync(PciPioCompl &comp)
         return;
 
     /* Send read message */
-    volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
-    volatile struct cosim_pcie_proto_h2d_read *read = &h2d_msg->read;
+    volatile union SimbricksProtoPcieH2D *h2d_msg = h2dAlloc();
+    volatile struct SimbricksProtoPcieH2DRead *read = &h2d_msg->read;
     read->req_id = (uintptr_t) &comp;
     read->offset = daddr;
     read->len = comp.pkt->getSize();
     read->bar = bar;
-    read->own_type = COSIM_PCIE_PROTO_H2D_MSG_READ | COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    read->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_READ |
+        SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
 }
 
 void
@@ -126,16 +127,16 @@ Device::writeAsync(PciPioCompl &comp)
         return;
 
     /* Send write message */
-    volatile union cosim_pcie_proto_h2d *h2d_msg = h2dAlloc();
-    volatile struct cosim_pcie_proto_h2d_write *write = &h2d_msg->write;
+    volatile union SimbricksProtoPcieH2D *h2d_msg = h2dAlloc();
+    volatile struct SimbricksProtoPcieH2DWrite *write = &h2d_msg->write;
     write->req_id = (uintptr_t) &comp;
     write->offset = daddr;
     write->len = comp.pkt->getSize();
     write->bar = bar;
     memcpy((void *)write->data, comp.pkt->getPtr<uint8_t>(),
             comp.pkt->getSize());
-    write->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITE |
-        COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    write->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE |
+        SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
 }
 
 Tick
@@ -191,19 +192,19 @@ Device::writeConfig(PacketPtr pkt)
     if (intx_before != intx_after || msi_before != msi_after ||
             msix_before != msix_after)
     {
-        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
-        volatile struct cosim_pcie_proto_h2d_devctrl *devctrl = &msg->devctrl;
+        volatile union SimbricksProtoPcieH2D *msg = h2dAlloc();
+        volatile struct SimbricksProtoPcieH2DDevctrl *devctrl = &msg->devctrl;
 
         devctrl->flags = 0;
         if (intx_after)
-            devctrl->flags |= COSIM_PCIE_PROTO_CTRL_INTX_EN;
+            devctrl->flags |= SIMBRICKS_PROTO_PCIE_CTRL_INTX_EN;
         if (msi_after)
-            devctrl->flags |= COSIM_PCIE_PROTO_CTRL_MSI_EN;
+            devctrl->flags |= SIMBRICKS_PROTO_PCIE_CTRL_MSI_EN;
         if (msix_after)
-            devctrl->flags |= COSIM_PCIE_PROTO_CTRL_MSIX_EN;
+            devctrl->flags |= SIMBRICKS_PROTO_PCIE_CTRL_MSIX_EN;
 
-        devctrl->own_type = COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL |
-            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+        devctrl->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL |
+            SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
     }
 
     return t;
@@ -233,22 +234,22 @@ Device::dmaDone(DMACompl &comp)
     DPRINTF(Ethernet, "cosim: completed DMA id %u\n", comp.id);
 
     if (comp.ty == DMACompl::READ) {
-        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
-        volatile struct cosim_pcie_proto_h2d_readcomp *rc;
+        volatile union SimbricksProtoPcieH2D *msg = h2dAlloc();
+        volatile struct SimbricksProtoPcieH2DReadcomp *rc;
         /* read completion */
         rc = &msg->readcomp;
         rc->req_id = comp.id;
         memcpy((void *) rc->data, comp.buf, comp.bufsiz);
-        rc->own_type = COSIM_PCIE_PROTO_H2D_MSG_READCOMP |
-            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+        rc->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP |
+            SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
     } else if (comp.ty == DMACompl::WRITE) {
-        volatile union cosim_pcie_proto_h2d *msg = h2dAlloc();
-        volatile struct cosim_pcie_proto_h2d_writecomp *wc;
+        volatile union SimbricksProtoPcieH2D *msg = h2dAlloc();
+        volatile struct SimbricksProtoPcieH2DWritecomp *wc;
         /* write completion */
         wc = &msg->writecomp;
         wc->req_id = comp.id;
-        wc->own_type = COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP |
-            COSIM_PCIE_PROTO_H2D_OWN_DEV;
+        wc->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITECOMP |
+            SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
     } else if (comp.ty == DMACompl::MSI) {
         /* MSI interrupt */
     } else {
@@ -259,12 +260,12 @@ Device::dmaDone(DMACompl &comp)
 bool
 Device::pollQueues()
 {
-    volatile struct cosim_pcie_proto_d2h_read *read;
-    volatile struct cosim_pcie_proto_d2h_write *write;
-    volatile struct cosim_pcie_proto_d2h_readcomp *rc;
-    volatile struct cosim_pcie_proto_d2h_writecomp *wc;
-    volatile struct cosim_pcie_proto_d2h_interrupt *intr;
-    volatile union cosim_pcie_proto_d2h *msg;
+    volatile struct SimbricksProtoPcieD2HRead *read;
+    volatile struct SimbricksProtoPcieD2HWrite *write;
+    volatile struct SimbricksProtoPcieD2HReadcomp *rc;
+    volatile struct SimbricksProtoPcieD2HWritecomp *wc;
+    volatile struct SimbricksProtoPcieD2HInterrupt *intr;
+    volatile union SimbricksProtoPcieD2H *msg;
     DMACompl *dc;
     PciPioCompl *pc;
     uint64_t rid, addr, len;
@@ -282,9 +283,9 @@ Device::pollQueues()
     if (sync && devLastTime > curTick())
         return false;
 
-    ty = msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK;
+    ty = msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_D2H_MSG_MASK;
     switch (ty) {
-        case COSIM_PCIE_PROTO_D2H_MSG_READ:
+        case SIMBRICKS_PROTO_PCIE_D2H_MSG_READ:
             /* Read */
             read = &msg->read;
 
@@ -298,7 +299,7 @@ Device::pollQueues()
             dmaRead(pciToDma(addr), len, dc, dc->buf, 0);
             break;
 
-        case COSIM_PCIE_PROTO_D2H_MSG_WRITE:
+        case SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE:
             /* Write */
             write = &msg->write;
 
@@ -313,20 +314,20 @@ Device::pollQueues()
             dmaWrite(pciToDma(addr), len, dc, dc->buf, 0);
             break;
 
-        case COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT:
+        case SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT:
             /* Interrupt */
             intr = &msg->interrupt;
-            if (intr->inttype == COSIM_PCIE_PROTO_INT_MSI) {
+            if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_MSI) {
                 assert(intr->vector < 32);
                 msi_signal(intr->vector);
-            } else if (intr->inttype == COSIM_PCIE_PROTO_INT_MSIX) {
+            } else if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_MSIX) {
                 msix_signal(intr->vector);
             } else {
                 panic("unsupported inttype=0x%x", intr->inttype);
             }
             break;
 
-        case COSIM_PCIE_PROTO_D2H_MSG_READCOMP:
+        case SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP:
             /* Receive read complete message */
             rc = &msg->readcomp;
 
@@ -338,7 +339,7 @@ Device::pollQueues()
             pc->setDone();
             break;
 
-        case COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP:
+        case SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP:
             /* Receive write complete message */
             wc = &msg->writecomp;
 
@@ -350,7 +351,7 @@ Device::pollQueues()
             break;
 
 
-        case COSIM_PCIE_PROTO_D2H_MSG_SYNC:
+        case SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC:
             /* received sync message */
             break;
 
@@ -527,7 +528,7 @@ Device::nicsimInit(const Params *p)
         return false;
     }
 
-    struct cosim_pcie_proto_dev_intro di;
+    struct SimbricksProtoPcieDevIntro di;
     if (recv(this->pciFd, &di, sizeof(di), 0) != sizeof(di)) {
         return false;
     }
@@ -536,13 +537,13 @@ Device::nicsimInit(const Params *p)
         return false;
     }
 
-    struct cosim_pcie_proto_host_intro hi;
-    hi.flags = (sync ? COSIM_PCIE_PROTO_FLAGS_HI_SYNC : 0);
+    struct SimbricksProtoPcieHostIntro hi;
+    hi.flags = (sync ? SIMBRICKS_PROTO_PCIE_FLAGS_HI_SYNC : 0);
     if (send(this->pciFd, &hi, sizeof(hi), 0) != sizeof(hi)) {
         return false;
     }
 
-    if (sync && ((di.flags & COSIM_PCIE_PROTO_FLAGS_DI_SYNC) == 0))
+    if (sync && ((di.flags & SIMBRICKS_PROTO_PCIE_FLAGS_DI_SYNC) == 0))
         panic("Cosim::nicsimInit: sync offered by device does not match local "
                 "setting");
 
@@ -576,7 +577,7 @@ error:
 
 bool
 Device::queueCreate(const Params *p,
-                    const struct cosim_pcie_proto_dev_intro &di)
+                    const struct SimbricksProtoPcieDevIntro &di)
 {
     int fd = -1;
     if ((fd = open(p->shm_path.c_str(), O_RDWR)) == -1) {
@@ -610,15 +611,15 @@ error:
     return false;
 }
 
-volatile union cosim_pcie_proto_h2d *
+volatile union SimbricksProtoPcieH2D *
 Device::h2dAlloc(bool syncAlloc)
 {
-    volatile union cosim_pcie_proto_h2d *msg =
-        (volatile union cosim_pcie_proto_h2d *)
+    volatile union SimbricksProtoPcieH2D *msg =
+        (volatile union SimbricksProtoPcieH2D *)
         (this->h2dQueue + this->h2dPos * this->h2dElen);
 
-    if ((msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_OWN_MASK) !=
-            COSIM_PCIE_PROTO_H2D_OWN_HOST) {
+    if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_OWN_MASK) !=
+            SIMBRICKS_PROTO_PCIE_H2D_OWN_HOST) {
         panic("cosim: failed to allocate h2d message\n");
     }
 
@@ -632,15 +633,15 @@ Device::h2dAlloc(bool syncAlloc)
     return msg;
 }
 
-volatile union cosim_pcie_proto_d2h *
+volatile union SimbricksProtoPcieD2H *
 Device::d2hPoll()
 {
-    volatile union cosim_pcie_proto_d2h *msg;
+    volatile union SimbricksProtoPcieD2H *msg;
 
-    msg = (volatile union cosim_pcie_proto_d2h *)
+    msg = (volatile union SimbricksProtoPcieD2H *)
         (this->d2hQueue + this->d2hPos * this->d2hElen);
-    if ((msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_OWN_MASK) ==
-            COSIM_PCIE_PROTO_D2H_OWN_DEV) {
+    if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_D2H_OWN_MASK) ==
+            SIMBRICKS_PROTO_PCIE_D2H_OWN_DEV) {
         return 0;
     }
 
@@ -648,10 +649,11 @@ Device::d2hPoll()
 }
 
 void
-Device::d2hDone(volatile union cosim_pcie_proto_d2h *msg)
+Device::d2hDone(volatile union SimbricksProtoPcieD2H *msg)
 {
-    msg->dummy.own_type = (msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK) |
-        COSIM_PCIE_PROTO_D2H_OWN_DEV;
+    msg->dummy.own_type =
+        (msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_D2H_MSG_MASK) |
+        SIMBRICKS_PROTO_PCIE_D2H_OWN_DEV;
     this->d2hPos = (this->d2hPos + 1) % this->d2hEnum;
 }
 
@@ -678,11 +680,11 @@ Device::processPollEvent()
 void
 Device::processSyncTxEvent()
 {
-    volatile union cosim_pcie_proto_h2d *msg = h2dAlloc(true);
-    volatile struct cosim_pcie_proto_h2d_sync *sync = &msg->sync;
+    volatile union SimbricksProtoPcieH2D *msg = h2dAlloc(true);
+    volatile struct SimbricksProtoPcieH2DSync *sync = &msg->sync;
 
-    sync->own_type = COSIM_PCIE_PROTO_H2D_MSG_SYNC |
-        COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    sync->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_SYNC |
+        SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
 
     schedule(this->syncTxEvent, curTick() + this->syncTxInterval);
 }

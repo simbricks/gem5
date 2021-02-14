@@ -151,10 +151,10 @@ private:
     bool nicsimInit(const Params *p);
     bool uxsocketInit(const Params *p);
     bool queueCreate(const Params *p,
-                     const struct cosim_pcie_proto_dev_intro &di);
-    volatile union cosim_pcie_proto_h2d *h2dAlloc(bool isSync=false);
-    volatile union cosim_pcie_proto_d2h *d2hPoll();
-    void d2hDone(volatile union cosim_pcie_proto_d2h *msg);
+                     const struct SimbricksProtoPcieDevIntro &di);
+    volatile union SimbricksProtoPcieH2D *h2dAlloc(bool isSync=false);
+    volatile union SimbricksProtoPcieD2H *d2hPoll();
+    void d2hDone(volatile union SimbricksProtoPcieD2H *msg);
     void processPollEvent();
     void processSyncTxEvent();
 
