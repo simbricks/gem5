@@ -80,7 +80,7 @@ Source('sinic.cc')
 
 # Simbricks
 if env['USE_SIMBRICKS']:
-    Source('cosim_nic.cc')
+    Source('simbricks_pci.cc')
 
 CompoundFlag('EthernetAll', [ 'Ethernet', 'EthernetPIO', 'EthernetDMA',
     'EthernetData' , 'EthernetDesc', 'EthernetIntr', 'EthernetSM',

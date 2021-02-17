@@ -275,10 +275,10 @@ class Sinic(EtherDevBase):
     InterruptPin = 0x01
     BAR0Size = '64kB'
 
-class Cosim(EtherDevBase):
-    type = 'Cosim'
-    cxx_class = 'Cosim::Device'
-    cxx_header = "dev/net/cosim_nic.hh"
+class SimbricksPci(EtherDevBase):
+    type = 'SimbricksPci'
+    cxx_class = 'Simbricks::Pci::Device'
+    cxx_header = "dev/net/simbricks_pci.hh"
 
     uxsocket_path = Param.String("unix socket path")
     shm_path = Param.String("Shared memory path")

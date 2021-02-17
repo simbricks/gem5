@@ -1,6 +1,6 @@
 #pragma once
 
-#include <params/Cosim.hh>
+#include <params/SimbricksPci.hh>
 #include <dev/net/etherpkt.hh>
 #include <dev/net/etherdevice.hh>
 #include <dev/net/etherint.hh>
@@ -8,7 +8,8 @@
 #include <simbricks/proto/base.h>
 #include <simbricks/proto/pcie.h>
 
-namespace Cosim {
+namespace Simbricks {
+namespace Pci {
 
 class PciPioCompl {
   public:
@@ -73,7 +74,7 @@ class Device : public EtherDevBase
 public:
     friend class TimingPioPort;
 
-    typedef CosimParams Params;
+    typedef SimbricksPciParams Params;
     const Params *params() const {
         return dynamic_cast<const Params *>(_params);
     }
@@ -186,4 +187,5 @@ private:
     Device *dev;
 };
 
-} // namespace Cosim
+} // namespace Pci
+} // namespace Simbricks

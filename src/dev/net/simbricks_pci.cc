@@ -7,10 +7,11 @@
 #include <iostream>
 
 #include <debug/EthernetAll.hh>
-#include <dev/net/cosim_nic.hh>
+#include <dev/net/simbricks_pci.hh>
 
 
-namespace Cosim {
+namespace Simbricks {
+namespace Pci {
 
 void sigusr1_handler(int dummy)
 {
@@ -30,7 +31,7 @@ Device::Device(const Params *p)
 {
     this->interface = new Interface(name() + ".int0", this);
     if (!nicsimInit(p)) {
-        panic("cosim: failed to initialize cosim");
+        panic("simbricks-pci: failed to initialize simbricks connection");
     }
     switch (p->sync_mode) {
     case 0:
@@ -40,10 +41,10 @@ Device::Device(const Params *p)
         syncMode = SIMBRICKS_PROTO_SYNC_BARRIER;
         break;
     default:
-        panic("cosim: unknown sync_mode option");
+        panic("simbricks-pci: unknown sync_mode option");
     }
 
-    DPRINTF(Ethernet, "cosim: device configured\n");
+    DPRINTF(Ethernet, "simbricks-pci: device configured\n");
     warn("pollInterval=%u  pciAsync=%u", pollInterval, pciAsynchrony);
 }
 
@@ -89,7 +90,7 @@ Device::readAsync(PciPioCompl &comp)
     int bar;
     Addr daddr;
 
-    DPRINTF(Ethernet, "cosim: sending read addr %x size %x id %lu\n",
+    DPRINTF(Ethernet, "simbricks-pci: sending read addr %x size %x id %lu\n",
             comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
 
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
@@ -116,7 +117,7 @@ Device::writeAsync(PciPioCompl &comp)
     int bar;
     Addr daddr;
 
-    DPRINTF(Ethernet, "cosim: sending write addr %x size %x id %lu\n",
+    DPRINTF(Ethernet, "simbricks-pci: sending write addr %x size %x id %lu\n",
             comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
 
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
@@ -145,7 +146,7 @@ Device::read(PacketPtr pkt)
     PciPioCompl pc(pkt);
 
     if (sync)
-        panic("cosim: atomic/functional read in synchronous mode");
+        panic("simbricks-pci: atomic/functional read in synchronous mode");
 
     readAsync(pc);
 
@@ -163,7 +164,7 @@ Device::write(PacketPtr pkt)
     PciPioCompl pc(pkt);
 
     if (sync)
-        panic("cosim: atomic/functional write in synchronous mode");
+        panic("simbricks-pci: atomic/functional write in synchronous mode");
 
     writeAsync(pc);
 
@@ -231,7 +232,7 @@ Device::DMACompl::done()
 void
 Device::dmaDone(DMACompl &comp)
 {
-    DPRINTF(Ethernet, "cosim: completed DMA id %u\n", comp.id);
+    DPRINTF(Ethernet, "simbricks-pci: completed DMA id %u\n", comp.id);
 
     if (comp.ty == DMACompl::READ) {
         volatile union SimbricksProtoPcieH2D *msg = h2dAlloc();
@@ -253,7 +254,7 @@ Device::dmaDone(DMACompl &comp)
     } else if (comp.ty == DMACompl::MSI) {
         /* MSI interrupt */
     } else {
-        panic("cosim: invalid completion");
+        panic("simbricks-pci: invalid completion");
     }
 }
 
@@ -292,7 +293,7 @@ Device::pollQueues()
             rid = read->req_id;
             addr = read->offset;
             len = read->len;
-            DPRINTF(Ethernet, "cosim: received DMA read id %u addr %x "
+            DPRINTF(Ethernet, "simbricks-pci: received DMA read id %u addr %x "
                     "size %x\n", rid, addr, len);
 
             dc = new DMACompl(this, rid, len, DMACompl::READ, name());
@@ -306,7 +307,7 @@ Device::pollQueues()
             rid = write->req_id;
             addr = write->offset;
             len = write->len;
-            DPRINTF(Ethernet, "cosim: received DMA write id %u addr %x "
+            DPRINTF(Ethernet, "simbricks-pci: received DMA write id %u addr %x "
                     "size %x\n", rid, addr, len);
 
             dc = new DMACompl(this, rid, len, DMACompl::WRITE, name());
@@ -332,7 +333,7 @@ Device::pollQueues()
             rc = &msg->readcomp;
 
             rid = rc->req_id;
-            DPRINTF(Ethernet, "cosim: received read completion id %lu\n", rid);
+            DPRINTF(Ethernet, "simbricks-pci: received read completion id %lu\n", rid);
 
             pc = (PciPioCompl *) (uintptr_t) rid;
             pc->pkt->setData((const uint8_t *) rc->data);
@@ -344,7 +345,7 @@ Device::pollQueues()
             wc = &msg->writecomp;
 
             rid = wc->req_id;
-            DPRINTF(Ethernet, "cosim: received write completion id %lu\n", rid);
+            DPRINTF(Ethernet, "simbricks-pci: received write completion id %lu\n", rid);
 
             pc = (PciPioCompl *) (uintptr_t) rid;
             pc->setDone();
@@ -356,7 +357,7 @@ Device::pollQueues()
             break;
 
         default:
-            panic("Cosim::pollQueues: unsupported type=%x", ty);
+            panic("Simbricks::Pci::pollQueues: unsupported type=%x", ty);
     }
 
     d2hDone(msg);
@@ -368,12 +369,12 @@ Device::msi_signal(uint16_t vec)
 {
     DMACompl *dc;
 
-    DPRINTF(Ethernet, "cosim: received intr vec %u\n", vec);
+    DPRINTF(Ethernet, "simbricks-pci: received intr vec %u\n", vec);
 
     if ((msicap.mc & 0x1) != 0 &&
             ((msicap.mmask & (1 << vec)) == 0))
     {
-        DPRINTF(Ethernet, "cosim: MSI addr=%x val=%x mask=%x\n",
+        DPRINTF(Ethernet, "simbricks-pci: MSI addr=%x val=%x mask=%x\n",
                 msicap.ma, msicap.md, msicap.mmask);
         dc = new DMACompl(this, 0, 4, DMACompl::MSI, name());
         memcpy(dc->buf, &msicap.md, 2);
@@ -382,7 +383,7 @@ Device::msi_signal(uint16_t vec)
         dmaWrite(pciToDma(msicap.ma | ((uint64_t) msicap.mua << 32)),
                 4, dc, dc->buf, 0);
     } else {
-        DPRINTF(Ethernet, "cosim: MSI masked\n");
+        DPRINTF(Ethernet, "simbricks-pci: MSI masked\n");
     }
 }
 
@@ -511,14 +512,14 @@ Device::startup()
 bool
 Device::recvPacket(EthPacketPtr pkt)
 {
-    DPRINTF(Ethernet, "cosim: receiving packet from wire\n");
+    DPRINTF(Ethernet, "simbricks-pci: receiving packet from wire\n");
     return true;
 }
 
 void
 Device::transferDone()
 {
-    DPRINTF(Ethernet, "cosim: transfer complete\n");
+    DPRINTF(Ethernet, "simbricks-pci: transfer complete\n");
 }
 
 bool
@@ -544,8 +545,8 @@ Device::nicsimInit(const Params *p)
     }
 
     if (sync && ((di.flags & SIMBRICKS_PROTO_PCIE_FLAGS_DI_SYNC) == 0))
-        panic("Cosim::nicsimInit: sync offered by device does not match local "
-                "setting");
+        panic("Simbricks::Pci::nicsimInit: sync offered by device does not "
+              "match local setting");
 
     return true;
 }
@@ -620,7 +621,7 @@ Device::h2dAlloc(bool syncAlloc)
 
     if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_OWN_MASK) !=
             SIMBRICKS_PROTO_PCIE_H2D_OWN_HOST) {
-        panic("cosim: failed to allocate h2d message\n");
+        panic("simbricks-pci: failed to allocate h2d message\n");
     }
 
     msg->dummy.timestamp = curTick() + pciAsynchrony;
@@ -776,7 +777,7 @@ TimingPioPort::recvTimingReq(PacketPtr pkt)
         dev.writeAsync(*tpc);
 
         if (pkt->isWrite() && dev.writesPosted && pkt->needsResponse()) {
-            DPRINTF(Ethernet, "cosim: sending immediate response for "
+            DPRINTF(Ethernet, "simbricks-pci: sending immediate response for "
                     "posted write\n");
             pkt->makeTimingResponse();
             schedTimingResp(pkt, curTick() + 1);
@@ -825,10 +826,11 @@ TimingPioCompl::setDone()
         delete this;
 }
 
-} // namespace Cosim
+} // namespace Pci
+} // namespace Simbricks
 
-Cosim::Device *
-CosimParams::create()
+Simbricks::Pci::Device *
+SimbricksPciParams::create()
 {
-    return new Cosim::Device(this);
+    return new Simbricks::Pci::Device(this);
 }

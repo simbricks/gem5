@@ -122,12 +122,12 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
             AddrRange(Addr('4GB'), size = excess_mem_size)]
 
     other_params = {}
-    if options.cosim_type == 'corundum':
+    if options.simbricks_type == 'corundum':
         other_params['BAR0Size'] = '32MB'
         other_params['BAR0'] = 0xC0000000
         other_params['VendorID'] = 0x5543
         other_params['DeviceID'] = 0x1001
-    elif options.cosim_type == 'i40e':
+    elif options.simbricks_type == 'i40e':
         other_params['BAR0Size'] = '4MB'
         other_params['BAR0'] = 0xC0000000
         other_params['BAR2Size'] = '32B'
@@ -146,21 +146,23 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
         other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
 
     else:
-        fatal('Unsupported cosim nic type (' + options.cosim_type + ')')
+        fatal('Unsupported simbricks pci type (' + options.simbricks_type + ')')
 
     class PCIPc(Pc):
-        ethernet = Cosim(pci_bus=0, pci_dev=2, pci_func=0,
+        ethernet = SimbricksPci(
+                         pci_bus=0, pci_dev=2, pci_func=0,
                          InterruptLine=15, InterruptPin=1,
                          CapabilityPtr=64,
                          MSICAPBaseOffset=64,
                          MSICAPCapId=0x5,
                          MSICAPMsgCtrl=0x8a,
-                         uxsocket_path=options.cosim_pci,
-                         shm_path=options.cosim_shm,
-                         sync=options.cosim_sync,
-                         poll_interval=('%dns' % (options.cosim_poll_int)),
-                         pci_asychrony=('%dns' % (options.cosim_pci_lat)),
-                         sync_tx_interval=('%dns' % (options.cosim_sync_int)),
+                         uxsocket_path=options.simbricks_pci,
+                         shm_path=options.simbricks_shm,
+                         sync=options.simbricks_sync,
+                         poll_interval=('%dns' % (options.simbricks_poll_int)),
+                         pci_asychrony=('%dns' % (options.simbricks_pci_lat)),
+                         sync_tx_interval=('%dns' % (
+                             options.simbricks_sync_int)),
                          LegacyIOBase = 0x8000000000000000,
                          **other_params)
 
@@ -439,23 +441,23 @@ Options.addFSOptions(parser)
 
 parser.add_option("--termport", action="store", type="int",
         default="3456", help="port for terminal to listen on")
-parser.add_option("--cosim-pci", action="store", type="string",
-        default="/tmp/cosim-pci", help="Cosim PCI Unix socket")
-parser.add_option("--cosim-shm", action="store", type="string",
-        default="/dev/shm/dummy_nic_shm", help="Cosim shared memory region")
-parser.add_option("--cosim-sync", action="store_true",
-        help="Synchronize with cosim pci device")
-parser.add_option("--cosim-sync_mode", action="store", type="int",
-        default=0, help="Synchronization mode: 0 - ModES, 1 - Barrier")
+parser.add_option("--simbricks-pci", action="store", type="string",
+        default="/tmp/simbricks-pci", help="Simbricks PCI Unix socket")
+parser.add_option("--simbricks-shm", action="store", type="string",
+        default="/dev/shm/dummy_nic_shm", help="Simbricks shared memory region")
+parser.add_option("--simbricks-sync", action="store_true",
+        help="Synchronize with simbricks pci device")
+parser.add_option("--simbricks-sync_mode", action="store", type="int",
+        default=0, help="Synchronization mode: 0 - Simbricks, 1 - Barrier")
 
-parser.add_option("--cosim-pci-lat", action="store", type="int",
-        default=500, help="Cosim PCI latency in ns")
-parser.add_option("--cosim-sync-int", action="store", type="int",
-        default=100, help="Cosim sync interval in ns")
-parser.add_option("--cosim-poll-int", action="store", type="int",
-        default=100000, help="Cosim poll interval in ns")
+parser.add_option("--simbricks-pci-lat", action="store", type="int",
+        default=500, help="Simbricks PCI latency in ns")
+parser.add_option("--simbricks-sync-int", action="store", type="int",
+        default=100, help="Simbricks sync interval in ns")
+parser.add_option("--simbricks-poll-int", action="store", type="int",
+        default=100000, help="Simbricks poll interval in ns")
 
-parser.add_option("--cosim-type", action="store", type="string",
+parser.add_option("--simbricks-type", action="store", type="string",
         default="corundum", help="Device type (corundum/i40e)")
 
 (options, args) = parser.parse_args()
