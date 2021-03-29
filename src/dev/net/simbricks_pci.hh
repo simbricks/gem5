@@ -110,6 +110,21 @@ public:
     bool recvPacket(EthPacketPtr pkt);
     void transferDone();
 
+    //stats
+    void regStats() override;
+    //void resetStats() override;
+
+    Stats::Scalar d2h_poll_total;
+    Stats::Scalar d2h_poll_suc;
+    Stats::Scalar d2h_poll_sync;
+    Stats::Scalar polling;
+    Stats::Scalar do_sth;
+    Stats::Scalar s_d2h_poll_total;
+    Stats::Scalar s_d2h_poll_suc;
+    Stats::Scalar s_d2h_poll_sync;
+    Stats::Scalar s_polling;
+    Stats::Scalar s_do_sth;
+
 protected:
     Interface *interface;
     TimingPioPort overridePort;
