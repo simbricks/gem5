@@ -91,7 +91,7 @@ def connectX86ClassicSystem(x86_sys, numCPUs):
 
     x86_sys.system_port = x86_sys.membus.slave
 
-def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
+def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, noSimbricks=False) :
     self = System()
 
     if workload is None:
@@ -173,7 +173,11 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
 
 
     # Platform
-    self.pc = PCIPc()
+    if (noSimbricks):
+        self.pc = Pc()
+    else:
+        self.pc = PCIPc()
+
     self.pc.com_1.device = Terminal(port = options.termport, outfile =
             'stdoutput')
 
@@ -264,9 +268,9 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     return self
 
 def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
-                       cmdline=None):
+                       noSimbricks=False, cmdline=None):
     # Build up the x86 system and then specialize it for Linux
-    self = makeX86System(mem_mode, numCPUs, mdesc, X86FsLinux(), Ruby)
+    self = makeX86System(mem_mode, numCPUs, mdesc, X86FsLinux(), Ruby, noSimbricks)
 
     # We assume below that there's at least 1MB of memory. We'll require 2
     # just to avoid corner cases.
@@ -325,8 +329,13 @@ def cmd_line_template():
 
 def build_system(np):
     cmdline = cmd_line_template()
+    
+    if options.no_simbricks:
+        nosimbricks = True
+    else:
+        nosimbricks = False
     sys = makeLinuxX86System(test_mem_mode, np, bm[0], options.ruby,
-                                  cmdline=cmdline)
+                                  nosimbricks, cmdline=cmdline)
 
     # Set the cache line size for the entire system
     sys.cache_line_size = options.cacheline_size
@@ -449,6 +458,8 @@ parser.add_option("--simbricks-sync", action="store_true",
         help="Synchronize with simbricks pci device")
 parser.add_option("--simbricks-sync_mode", action="store", type="int",
         default=0, help="Synchronization mode: 0 - Simbricks, 1 - Barrier")
+parser.add_option("--no-simbricks", action="store_true",
+        help="run standalone gem5 without simbricks")
 
 parser.add_option("--simbricks-pci-lat", action="store", type="int",
         default=500, help="Simbricks PCI latency in ns")
