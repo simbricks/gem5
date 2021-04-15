@@ -11,7 +11,7 @@ from m5.util import addToPath, fatal, warn, convert
 from m5.util.fdthelper import *
 
 addToPath('../')
-
+from ruby import Ruby
 from common.Benchmarks import *
 from common import Simulation
 from common import CacheConfig
@@ -46,6 +46,16 @@ def fillInCmdline(mdesc, template, **kwargs):
     kwargs.setdefault('mem', mdesc.mem())
     kwargs.setdefault('script', mdesc.script())
     return template % kwargs
+
+def connectX86RubySystem(x86_sys):
+    # North Bridge
+    x86_sys.iobus = IOXBar()
+
+    # add the ide to the list of dma devices that later need to attach to
+    # dma controllers
+    x86_sys._dma_ports = [x86_sys.pc.south_bridge.ide.dma]
+    x86_sys.pc.attachIO(x86_sys.iobus, x86_sys._dma_ports)
+
 
 def connectX86ClassicSystem(x86_sys, numCPUs):
     # Constants similar to x86_traits.hh
@@ -182,7 +192,11 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
             'stdoutput')
 
     # Create and connect the busses required by each memory system
-    connectX86ClassicSystem(self, numCPUs)
+    #connectX86ClassicSystem(self, numCPUs)
+    if Ruby:
+        connectX86RubySystem(self)
+    else:
+        connectX86ClassicSystem(self, numCPUs)
 
     self.intrctrl = IntrControl()
 
@@ -377,69 +391,103 @@ def build_system(np):
         ObjectList.is_kvm_cpu(FutureClass):
         sys.kvm_vm = KvmVM()
 
-    CacheConfig.config_cache(options, sys)
-    if options.caches and options.l3cache and options.ddio_enabled:
-        # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
-                              is_iocache = True,
-                              ddio_enabled = True,
-                              assoc = 16, tag_latency = 2,
-                              data_latency = 2, response_latency = 2,
-                              write_buffers = 64)
-        sys.iocache.cpu_side = sys.iobus.master
-        sys.iocache.mem_side = sys.tol3bus.slave
+    if options.ruby:
+        bootmem = getattr(sys, '_bootmem', None)
+        Ruby.create_system(options, True, sys, sys.iobus,
+                           sys._dma_ports, bootmem)
 
-    elif options.caches or options.l2cache:
-        # By default the IOCache runs at the system clock
-        sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
-                              is_iocache = True,
-                              ddio_disabled = options.ddio_disabled,
-                              assoc = 16, tag_latency = 2,
-                              data_latency = 2, response_latency = 2,
-                              write_buffers = 64)
-        sys.iocache.cpu_side = sys.iobus.master
-        sys.iocache.mem_side = sys.membus.slave
-    elif not options.external_memory_system:
-        sys.iobridge = Bridge(delay='50ns', ranges = sys.mem_ranges)
-        sys.iobridge.slave = sys.iobus.master
-        sys.iobridge.master = sys.membus.slave
+        # Create a seperate clock domain for Ruby
+        sys.ruby.clk_domain = SrcClockDomain(clock = options.ruby_clock,
+                                        voltage_domain = sys.voltage_domain)
 
-    # Sanity check
-    if options.simpoint_profile:
-        if not ObjectList.is_noncaching_cpu(TestCPUClass):
-            fatal("SimPoint generation should be done with atomic cpu")
-        if np > 1:
-            fatal("SimPoint generation not supported with more than one CPUs")
+        # Connect the ruby io port to the PIO bus,
+        # assuming that there is just one such port.
+        sys.iobus.master = sys.ruby._io_port.slave
 
-    for i in range(np):
+        for (i, cpu) in enumerate(sys.cpu):
+            #
+            # Tie the cpu ports to the correct ruby system ports
+            #
+            cpu.clk_domain = sys.cpu_clk_domain
+            cpu.createThreads()
+            cpu.createInterruptController()
+
+            cpu.icache_port = sys.ruby._cpu_ports[i].slave
+            cpu.dcache_port = sys.ruby._cpu_ports[i].slave
+
+            if buildEnv['TARGET_ISA'] in ("x86", "arm"):
+                cpu.itb.walker.port = sys.ruby._cpu_ports[i].slave
+                cpu.dtb.walker.port = sys.ruby._cpu_ports[i].slave
+
+            if buildEnv['TARGET_ISA'] in "x86":
+                cpu.interrupts[0].pio = sys.ruby._cpu_ports[i].master
+                cpu.interrupts[0].int_master = sys.ruby._cpu_ports[i].slave
+                cpu.interrupts[0].int_slave = sys.ruby._cpu_ports[i].master
+    
+    else:
+        CacheConfig.config_cache(options, sys)
+        if options.caches and options.l3cache and options.ddio_enabled:
+            # By default the IOCache runs at the system clock
+            sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
+                                is_iocache = True,
+                                ddio_enabled = True,
+                                assoc = 16, tag_latency = 2,
+                                data_latency = 2, response_latency = 2,
+                                write_buffers = 64)
+            sys.iocache.cpu_side = sys.iobus.master
+            sys.iocache.mem_side = sys.tol3bus.slave
+
+        elif options.caches or options.l2cache:
+            # By default the IOCache runs at the system clock
+            sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
+                                is_iocache = True,
+                                ddio_disabled = options.ddio_disabled,
+                                assoc = 16, tag_latency = 2,
+                                data_latency = 2, response_latency = 2,
+                                write_buffers = 64)
+            sys.iocache.cpu_side = sys.iobus.master
+            sys.iocache.mem_side = sys.membus.slave
+        elif not options.external_memory_system:
+            sys.iobridge = Bridge(delay='50ns', ranges = sys.mem_ranges)
+            sys.iobridge.slave = sys.iobus.master
+            sys.iobridge.master = sys.membus.slave
+
+        # Sanity check
         if options.simpoint_profile:
-            sys.cpu[i].addSimPointProbe(options.simpoint_interval)
-        if options.checker:
-            sys.cpu[i].addCheckerCpu()
-        if not ObjectList.is_kvm_cpu(TestCPUClass):
-            if options.bp_type:
-                bpClass = ObjectList.bp_list.get(options.bp_type)
-                sys.cpu[i].branchPred = bpClass()
-            if options.indirect_bp_type:
-                IndirectBPClass = ObjectList.indirect_bp_list.get(
-                    options.indirect_bp_type)
-                sys.cpu[i].branchPred.indirectBranchPred = \
-                    IndirectBPClass()
-        sys.cpu[i].createThreads()
+            if not ObjectList.is_noncaching_cpu(TestCPUClass):
+                fatal("SimPoint generation should be done with atomic cpu")
+            if np > 1:
+                fatal("SimPoint generation not supported with more than one CPUs")
 
-    # If elastic tracing is enabled when not restoring from checkpoint and
-    # when not fast forwarding using the atomic cpu, then check that the
-    # TestCPUClass is DerivO3CPU or inherits from DerivO3CPU. If the check
-    # passes then attach the elastic trace probe.
-    # If restoring from checkpoint or fast forwarding, the code that does this for
-    # FutureCPUClass is in the Simulation module. If the check passes then the
-    # elastic trace probe is attached to the switch CPUs.
-    if options.elastic_trace_en and options.checkpoint_restore == None and \
-        not options.fast_forward:
-        CpuConfig.config_etrace(TestCPUClass, sys.cpu, options)
+        for i in range(np):
+            if options.simpoint_profile:
+                sys.cpu[i].addSimPointProbe(options.simpoint_interval)
+            if options.checker:
+                sys.cpu[i].addCheckerCpu()
+            if not ObjectList.is_kvm_cpu(TestCPUClass):
+                if options.bp_type:
+                    bpClass = ObjectList.bp_list.get(options.bp_type)
+                    sys.cpu[i].branchPred = bpClass()
+                if options.indirect_bp_type:
+                    IndirectBPClass = ObjectList.indirect_bp_list.get(
+                        options.indirect_bp_type)
+                    sys.cpu[i].branchPred.indirectBranchPred = \
+                        IndirectBPClass()
+            sys.cpu[i].createThreads()
+
+        # If elastic tracing is enabled when not restoring from checkpoint and
+        # when not fast forwarding using the atomic cpu, then check that the
+        # TestCPUClass is DerivO3CPU or inherits from DerivO3CPU. If the check
+        # passes then attach the elastic trace probe.
+        # If restoring from checkpoint or fast forwarding, the code that does this for
+        # FutureCPUClass is in the Simulation module. If the check passes then the
+        # elastic trace probe is attached to the switch CPUs.
+        if options.elastic_trace_en and options.checkpoint_restore == None and \
+            not options.fast_forward:
+            CpuConfig.config_etrace(TestCPUClass, sys.cpu, options)
 
 
-    MemConfig.config_mem(options, sys)
+        MemConfig.config_mem(options, sys)
 
     return sys
 
@@ -471,6 +519,8 @@ parser.add_option("--simbricks-poll-int", action="store", type="int",
 parser.add_option("--simbricks-type", action="store", type="string",
         default="corundum", help="Device type (corundum/i40e)")
 
+if '--ruby' in sys.argv:
+    Ruby.define_options(parser)
 (options, args) = parser.parse_args()
 
 if args:
