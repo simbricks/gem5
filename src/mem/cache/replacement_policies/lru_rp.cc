@@ -145,6 +145,7 @@ LRURP::getVictimWayPart(const ReplacementCandidates& candidates,
         mask = mask << 1;
         assert(way < 32);
     }
+    (void) is_io_invalidated;
     DPRINTF(DDIO, "%s: victim way %d is_in_part %d is_io_invalidated %d\n", __func__, victim->getWay(), is_in_part, is_io_invalidated);
     //printf("getVictimWayPart: victim way %d is_in_part %d\n", victim->getWay(), is_in_part);
 
