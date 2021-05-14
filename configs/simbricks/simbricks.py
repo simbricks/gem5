@@ -53,7 +53,7 @@ def connectX86RubySystem(x86_sys):
 
     # add the ide to the list of dma devices that later need to attach to
     # dma controllers
-    x86_sys._dma_ports = [x86_sys.pc.south_bridge.ide.dma]
+    x86_sys._dma_ports = [x86_sys.pc.south_bridge.ide.dma, x86_sys.pc.ethernet.dma]
     x86_sys.pc.attachIO(x86_sys.iobus, x86_sys._dma_ports)
 
 
@@ -179,7 +179,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         def attachIO(self, bus, dma_ports = []):
             super(PCIPc, self).attachIO(bus, dma_ports)
             self.ethernet.pio = bus.master
-            self.ethernet.dma = bus.slave
+            #self.ethernet.dma = bus.slave
 
 
     # Platform
