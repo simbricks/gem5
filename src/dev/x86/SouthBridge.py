@@ -32,6 +32,7 @@ from m5.objects.I82094AA import I82094AA
 from m5.objects.I8237 import I8237
 from m5.objects.I8254 import I8254
 from m5.objects.I8259 import I8259
+from m5.objects.MSITarget import MSITarget
 from m5.objects.Ide import IdeController
 from m5.objects.PciDevice import PciLegacyIoBar, PciIoBar
 from m5.objects.PcSpeaker import PcSpeaker
@@ -55,6 +56,7 @@ class SouthBridge(SimObject):
     _pit = I8254(pio_addr=x86IOAddress(0x40))
     _speaker = PcSpeaker(pio_addr=x86IOAddress(0x61))
     _io_apic = I82094AA(pio_addr=0xFEC00000)
+    _msi = MSITarget(pio_addr=0xFEE00000)
 
     pic1 = Param.I8259(_pic1, "Master PIC")
     pic2 = Param.I8259(_pic2, "Slave PIC")
@@ -64,6 +66,7 @@ class SouthBridge(SimObject):
     pit = Param.I8254(_pit, "Programmable interval timer")
     speaker = Param.PcSpeaker(_speaker, "PC speaker")
     io_apic = Param.I82094AA(_io_apic, "I/O APIC")
+    msi = Param.MSITarget(_msi, "MSI Target")
 
     # IDE controller
     ide = IdeController(disks=[], pci_func=0, pci_dev=4, pci_bus=0)
@@ -102,3 +105,5 @@ class SouthBridge(SimObject):
         self.speaker.pio = bus.mem_side_ports
         self.io_apic.pio = bus.mem_side_ports
         self.io_apic.int_requestor = bus.cpu_side_ports
+        self.msi.pio = bus.master
+        self.msi.int_master = bus.slave
