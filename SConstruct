@@ -709,6 +709,12 @@ have_hdf5 = \
 if not have_hdf5:
     warning("Couldn't find any HDF5 C++ libraries. Disabling HDF5 support.")
 
+
+have_simbricks = conf.CheckCHeader('simbricks/proto/pcie.h', '<>')
+if not have_simbricks:
+    warning('Did not find simbricks pcie protocol header \n'
+            '(simbricks/proto/pcie.h). Disabling simbricks module.')
+
 ######################################################################
 #
 # Finish the configuration
@@ -809,6 +815,7 @@ sticky_vars.AddVariables(
     ('NUMBER_BITS_PER_SET', 'Max elements in set (default 64)',
                  64),
     BoolVariable('USE_HDF5', 'Enable the HDF5 support', have_hdf5),
+    BoolVariable('USE_SIMBRICKS', 'Enable Simbricks support', have_simbricks),
     )
 
 # These variables get exported to #defines in config/*.hh (see src/SConscript).

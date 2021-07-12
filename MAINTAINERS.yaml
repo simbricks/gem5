@@ -151,6 +151,13 @@ dev-arm:
     - Andreas Sandberg <andreas.sandberg@arm.com>
     - Giacomo Travaglini <giacomo.travaglini@arm.com>
 
+dev-simbricks:
+  desc: >-
+    SimBricks modular simulation framework integration:
+  status: maintained
+  maintainers:
+    - Antoine Kaufmann <antoinek@mpi-sws.org>
+
 doc:
   status: maintained
   maintainers:
