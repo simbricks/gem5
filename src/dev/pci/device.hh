@@ -329,6 +329,30 @@ class PciDevice : public DmaDevice
         return false;
     }
 
+    /**
+     * Try to do a config register read from range baseAddr - (baseAddr + len)
+     * and if in range read data from corresponding offset in basePtr.
+     *
+     * @param force Execute the write even if baseAddr == 0, otherwise we skip
+     *              (for ignoring disabled caps).
+     *
+     * @return true if read succeeds, false if out of range.
+     */
+    bool readConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+        const uint8_t *basePtr, size_t len, bool force=false);
+
+    /**
+     * Try to do a config register write to range baseAddr - (baseAddr + len)
+     * and if in range write data from corresponding offset in basePtr.
+     *
+     * @param force Execute the write even if baseAddr == 0, otherwise we skip
+     *              (for ignoring disabled caps).
+     *
+     * @return true if write succeeds, false if out of range.
+     */
+    bool writeConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+        uint8_t *base_ptr, size_t len, bool force=false);
+
   public: // Host configuration interface
     /**
      * Write to the PCI config space data that is stored locally. This may be
