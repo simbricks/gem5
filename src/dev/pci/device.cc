@@ -331,7 +331,7 @@ PciDevice::writeConfig(PacketPtr pkt)
           case PCI_COMMAND:
             config.command = pkt->getLE<uint16_t>();
             // IO or memory space may have been enabled/disabled.
-            pioPort.sendRangeChange();
+            pciPioPort().sendRangeChange();
             break;
           case PCI_STATUS:
             config.status = pkt->getLE<uint16_t>();
@@ -360,7 +360,7 @@ PciDevice::writeConfig(PacketPtr pkt)
                 auto *bar = BARs[num];
                 config.baseAddr[num] =
                     htole(bar->write(hostInterface, pkt->getLE<uint32_t>()));
-                pioPort.sendRangeChange();
+                pciPioPort().sendRangeChange();
             }
             break;
 
@@ -377,7 +377,7 @@ PciDevice::writeConfig(PacketPtr pkt)
             // it for now
             config.command = pkt->getLE<uint32_t>();
             // IO or memory space may have been enabled/disabled.
-            pioPort.sendRangeChange();
+            pciPioPort().sendRangeChange();
             break;
 
           default:
@@ -548,5 +548,5 @@ PciDevice::unserialize(CheckpointIn &cp)
     pxcap.pxdcap2 = tmp32;
     paramIn(cp, csprintf("pxcap.pxdc2"), tmp32);
     pxcap.pxdc2 = tmp32;
-    pioPort.sendRangeChange();
+    pciPioPort().sendRangeChange();
 }

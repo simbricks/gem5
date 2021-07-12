@@ -371,6 +371,16 @@ class PciDevice : public DmaDevice
     AddrRangeList getAddrRanges() const override;
 
     /**
+     * PIO port used by the device. Defaults to pioPort in PIODevice, but can be
+     * overriden by subclasses (e.g. for devices that want to use asynchronous
+     * timing memory operations).
+     */
+    virtual ResponsePort &pciPioPort()
+    {
+        return pioPort;
+    }
+
+    /**
      * Constructor for PCI Dev. This function copies data from the
      * config file object PCIConfigData and registers the device with
      * a PciHost object.
