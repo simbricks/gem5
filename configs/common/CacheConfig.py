@@ -124,8 +124,8 @@ def config_cache(options, system):
             system.l3 = l3_cache_class(clk_domain=system.cpu_clk_domain,\
                  **_get_cache_opts('l3', options))
 
-            system.tol2bus = L2XBar(clk_domain=system.cpu_sclk_domain)
-            system.tol3bus = L3XBar(clk_domain=system.cpu_sclk_domain)
+            system.tol2bus = L2XBar(clk_domain=system.cpu_clk_domain)
+            system.tol3bus = L3XBar(clk_domain=system.cpu_clk_domain)
 
             system.l2.cpu_side = system.tol2bus.master
             system.l2.mem_side = system.tol3bus.slave
