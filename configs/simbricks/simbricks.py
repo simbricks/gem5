@@ -139,17 +139,17 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, \
     if options.simbricks_type == 'corundum':
         #other_params['BAR0Size'] = '32MB'
         #other_params['BAR0'] = 0xC0000000
-        other_params['BAR0'] = PciBar(_addr = 0xC0000000, _size = 0x800000000)
+        other_params['BAR0'] = PciMemBar(size='32MB')
         other_params['VendorID'] = 0x5543
         other_params['DeviceID'] = 0x1001
     elif options.simbricks_type == 'i40e':
         #other_params['BAR0Size'] = '4MB'
         #other_params['BAR0'] = 0xC0000000
-        other_params['BAR0'] = PciBar(_addr = 0xC0000000, _size = 0x100000000)
+        other_params['BAR0'] = PciMemBar(size='4MB')
         #other_params['BAR2Size'] = '32B'
         #other_params['BAR2'] = 0x2000
         #other_params['BAR2LegacyIO'] = True
-        other_params['BAR2'] = PciLegacyIoBar(_addr = 0x2000, _size = 0x20)
+        other_params['BAR2'] = PciLegacyIoBar(addr=0x2000, size ='32B')
         other_params['VendorID'] = 0x8086
         other_params['DeviceID'] = 0x1572
         # enable msi-x
@@ -161,7 +161,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, \
         other_params['MSIXPbaOffset'] = 0x1000 | 3
         #other_params['BAR3Size'] = '32kB'
         #other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
-        other_params['BAR3'] = PciBar(_addr = 0xC2000000, _size = 0x400)
+        other_params['BAR3'] = PciMemBar(size='32kB')
 
     else:
         fatal('Unsupported simbricks pci type (' + \

@@ -40,7 +40,7 @@
 
 X86ISA::MSITarget::MSITarget(const Params &p)
     : BasicPioDevice(p, 0x1000000),
-      intRequestPort(name() + ".int_request", this, this, p.int_latency)
+      intRequestPort(name() + ".int_requestor", this, this, p.int_latency)
 {
 }
 
@@ -59,7 +59,7 @@ X86ISA::MSITarget::init()
 Port &
 X86ISA::MSITarget::getPort(const std::string &if_name, PortID idx)
 {
-    if (if_name == "int_request")
+    if (if_name == "int_requestor")
         return intRequestPort;
     else
         return BasicPioDevice::getPort(if_name, idx);
