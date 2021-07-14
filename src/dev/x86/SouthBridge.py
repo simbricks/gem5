@@ -105,5 +105,5 @@ class SouthBridge(SimObject):
         self.speaker.pio = bus.mem_side_ports
         self.io_apic.pio = bus.mem_side_ports
         self.io_apic.int_requestor = bus.cpu_side_ports
-        self.msi.pio = bus.master
-        self.msi.int_master = bus.slave
+        self.msi.pio = bus.mem_side_ports
+        self.msi.int_requestor = bus.cpu_side_ports
