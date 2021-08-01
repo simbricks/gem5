@@ -220,7 +220,8 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         #
         dma_seq = DMASequencer(version = i,
                                ruby_system = ruby_system,
-                               slave = dma_port)
+                               slave = dma_port,
+                               mem_master_port = system.iobus.slave)
 
         dma_cntrl = DMA_Controller(version = i,
                                    dma_sequencer = dma_seq,

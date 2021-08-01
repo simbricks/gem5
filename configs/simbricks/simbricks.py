@@ -188,7 +188,8 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, \
         def attachIO(self, bus, dma_ports = []):
             super(PCIPc, self).attachIO(bus, dma_ports)
             self.ethernet.pio = bus.master
-            self.ethernet.dma = bus.slave
+            if not Ruby:
+                self.ethernet.dma = bus.slave
 
 
     # Platform
@@ -424,30 +425,30 @@ def build_system(np):
             cpu.createThreads()
             cpu.createInterruptController()
 
-            cpu.icache_port = sys.ruby._cpu_ports[i].slave
-            cpu.dcache_port = sys.ruby._cpu_ports[i].slave
-
-            if buildEnv['TARGET_ISA'] in ("x86", "arm"):
-                cpu.itb.walker.port = sys.ruby._cpu_ports[i].slave
-                cpu.dtb.walker.port = sys.ruby._cpu_ports[i].slave
-
-            if buildEnv['TARGET_ISA'] in "x86":
-                cpu.interrupts[0].pio = sys.ruby._cpu_ports[i].master
-                cpu.interrupts[0].int_master = sys.ruby._cpu_ports[i].slave
-                cpu.interrupts[0].int_slave = sys.ruby._cpu_ports[i].master
+            sys.ruby._cpu_ports[i].connectCpuPorts(cpu)
 
     else:
         CacheConfig.config_cache(options, sys)
         if options.caches and options.l3cache:
-            # By default the IOCache runs at the system clock
-            sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
-                                #is_iocache = True,
-                                #ddio_enabled = True,
-                                assoc = 16, tag_latency = 2,
-                                data_latency = 2, response_latency = 2,
-                                write_buffers = 64)
-            sys.iocache.cpu_side = sys.iobus.master
-            sys.iocache.mem_side = sys.tol3bus.slave
+            if options.ddio_enabled:
+                # By default the IOCache runs at the system clock
+                sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
+                                    is_iocache = True,
+                                    ddio_enabled = True,
+                                    assoc = 16, tag_latency = 2,
+                                    data_latency = 2, response_latency = 2,
+                                    write_buffers = 64)
+                sys.iocache.cpu_side = sys.iobus.master
+                sys.iocache.mem_side = sys.tol3bus.slave
+            else:
+                # DDIO disabled
+                sys.iocache = IOCache(addr_ranges = sys.mem_ranges,
+                                    is_iocache = True,
+                                    assoc = 16, tag_latency = 2,
+                                    data_latency = 2, response_latency = 2,
+                                    write_buffers = 64)
+                sys.iocache.cpu_side = sys.iobus.master
+                sys.iocache.mem_side = sys.membus.slave
 
         elif options.caches or options.l2cache:
             # By default the IOCache runs at the system clock
@@ -536,6 +537,17 @@ parser.add_option("--simbricks-poll-int", action="store", type="int",
 
 parser.add_option("--simbricks-type", action="store", type="string",
         default="corundum", help="Device type (corundum/i40e)")
+
+# DDIO related
+parser.add_option("--ddio-disabled", action="store_true",
+                  help="DDIO is disabled")
+parser.add_option("--ddio-enabled", action="store_true",
+                  help="Enable DDIO")
+parser.add_option("--ddio-way-part", action="store", type="int",
+    help="way partion of ddio - if set to 0 ddio can use the entire llc", \
+        default=0)
+parser.add_option("--iocache_size", type="string", default="32kB")
+parser.add_option("--iocache_assoc", type="int", default=16)
 
 if '--ruby' in sys.argv:
     Ruby.define_options(parser)
