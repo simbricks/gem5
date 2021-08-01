@@ -481,7 +481,7 @@ class BaseCache : public ClockedObject
      * @return Boolean indicating whether the request was satisfied.
      */
     virtual bool access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
-                        PacketList &writebacks);
+                        PacketList &writebacks, bool is_ddio = false);
 
     /*
      * Handle a timing request that hit in the cache
@@ -777,7 +777,8 @@ class BaseCache : public ClockedObject
      * @return Pointer to the new cache block.
      */
     CacheBlk *handleFill(PacketPtr pkt, CacheBlk *blk,
-                         PacketList &writebacks, bool allocate);
+                         PacketList &writebacks, bool allocate, \
+                         bool is_ddio = false);
 
     /**
      * Allocate a new block and perform any necessary writebacks
@@ -791,7 +792,8 @@ class BaseCache : public ClockedObject
      * @param writebacks A list of writeback packets for the evicted blocks
      * @return the allocated block
      */
-    CacheBlk *allocateBlock(const PacketPtr pkt, PacketList &writebacks);
+    CacheBlk *allocateBlock(const PacketPtr pkt, PacketList &writebacks, \
+    bool is_ddio = false);
     /**
      * Evict a cache block.
      *
@@ -817,7 +819,7 @@ class BaseCache : public ClockedObject
      *
      * @param blk Block to invalidate
      */
-    void invalidateBlock(CacheBlk *blk);
+    void invalidateBlock(CacheBlk *blk, bool is_llc_inv = false);
 
     /**
      * Create a writeback request for the given block.
@@ -1025,6 +1027,16 @@ class BaseCache : public ClockedObject
         /** The average latency of an MSHR miss, per command and thread. */
         Stats::Formula avgMshrUncacheableLatency;
     };
+
+    bool isLLCIOInvalid(PacketPtr pkt) {
+        return isLLC && pkt->isBlockIO() && pkt->cmd == MemCmd::InvalidateReq;
+    }
+
+    bool isIOCache;
+    bool ddioEnabled;
+    bool ddioDisabled;
+    int32_t ddioWayPart;
+    bool isLLC;
 
     struct CacheStats : public Stats::Group
     {

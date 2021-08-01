@@ -60,7 +60,7 @@
 MSHR::MSHR() : downstreamPending(false),
                pendingModified(false),
                postInvalidate(false), postDowngrade(false),
-               wasWholeLineWrite(false), isForward(false)
+               wasWholeLineWrite(false), wasBlockIO(false), isForward(false)
 {
 }
 
@@ -305,6 +305,7 @@ MSHR::allocate(Addr blk_addr, unsigned blk_size, PacketPtr target,
     _isUncacheable = target->req->isUncacheable();
     inService = false;
     downstreamPending = false;
+    wasBlockIO = target->isBlockIO();
 
     targets.init(blkAddr, blkSize);
     deferredTargets.init(blkAddr, blkSize);

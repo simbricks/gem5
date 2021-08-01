@@ -122,10 +122,16 @@ def config_cache(options, system):
             system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,\
                  **_get_cache_opts('l2', options))
             system.l3 = l3_cache_class(clk_domain=system.cpu_clk_domain,\
-                 **_get_cache_opts('l3', options))
+                 **_get_cache_opts('l3', options),
+                 ddio_enabled = options.ddio_enabled,
+                 ddio_way_part = options.ddio_way_part)
 
             system.tol2bus = L2XBar(clk_domain=system.cpu_clk_domain)
-            system.tol3bus = L3XBar(clk_domain=system.cpu_clk_domain)
+            if options.ddio_enabled:
+                system.tol3bus = L3XBar(clk_domain=system.cpu_clk_domain, \
+                    snoop_filter=NULL)
+            else:
+                system.tol3bus = L3XBar(clk_domain=system.cpu_clk_domain)
 
             system.l2.cpu_side = system.tol2bus.master
             system.l2.mem_side = system.tol3bus.slave

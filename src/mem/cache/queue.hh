@@ -118,6 +118,8 @@ class Queue : public Drainable
     /** The number of currently allocated entries. */
     int allocated;
 
+    int numReserveDDIOWrite;
+
   public:
 
     /**
@@ -129,7 +131,7 @@ class Queue : public Drainable
     Queue(const std::string &_label, int num_entries, int reserve) :
         label(_label), numEntries(num_entries + reserve),
         numReserve(reserve), entries(numEntries), _numInService(0),
-        allocated(0)
+        allocated(0), numReserveDDIOWrite(0)
     {
         for (int i = 0; i < numEntries; ++i) {
             freeList.push_back(&entries[i]);
@@ -143,12 +145,22 @@ class Queue : public Drainable
 
     bool isFull() const
     {
-        return (allocated >= numEntries - numReserve);
+        return (allocated >= numEntries - numReserve - numReserveDDIOWrite);
     }
 
     int numInService() const
     {
         return _numInService;
+    }
+
+    void reserveDDIOWrite() {
+        numReserveDDIOWrite ++;
+        assert(numReserveDDIOWrite < numEntries);
+    }
+
+    void unreserveDDIOWrite() {
+        numReserveDDIOWrite --;
+        assert(numReserveDDIOWrite >= 0);
     }
 
     /**

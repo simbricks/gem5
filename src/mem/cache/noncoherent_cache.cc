@@ -75,7 +75,7 @@ NoncoherentCache::satisfyRequest(PacketPtr pkt, CacheBlk *blk, bool, bool)
 
 bool
 NoncoherentCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
-                         PacketList &writebacks)
+                         PacketList &writebacks, bool is_ddio)
 {
     bool success = BaseCache::access(pkt, blk, lat, writebacks);
 
