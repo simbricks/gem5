@@ -36,6 +36,7 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <ctime>
 #include <iostream>
 
 #include "debug/SimBricksAll.hh"
@@ -43,9 +44,48 @@
 namespace SimBricks {
 namespace Pci {
 
+double d2h_poll_total_, d2h_poll_suc_, d2h_poll_sync_;
+//count from signal
+double s_d2h_poll_total_, s_d2h_poll_suc_, s_d2h_poll_sync_;
+
+#ifdef SIMBRICKS_CLOCK_PROFILING
+clock_t polling_ = 0, do_sth_ = 0;
+clock_t s_polling_ = 0, s_do_sth_ = 0;
+#endif
+
+int stat_flag = 0;
+
 void sigusr1_handler(int dummy)
 {
     std::cout << "main_time = " << curTick() << std::endl;
+}
+
+void sigusr2_handler(int dummy){
+    stat_flag = 1;
+}
+void sigint_handler(int dummy)
+{
+
+    fprintf(stderr, "%20s: %22f %20s: %22f  poll_suc_rate: %f\n", \
+    "d2h_poll_total", d2h_poll_total_, "d2h_poll_suc", d2h_poll_suc_, \
+    (double)d2h_poll_suc_/d2h_poll_total_);
+
+    fprintf(stderr, "%65s: %22f  sync_rate: %f\n",\
+    "d2h_poll_sync", d2h_poll_sync_, (double)d2h_poll_sync_/d2h_poll_suc_);
+
+    fprintf(stderr, "%20s: %22f %20s: %22f  poll_suc_rate: %f\n", \
+    "s_d2h_poll_total", s_d2h_poll_total_, "s_d2h_poll_suc", s_d2h_poll_suc_, \
+    (double)s_d2h_poll_suc_/s_d2h_poll_total_);
+
+    fprintf(stderr, "%65s: %22f  sync_rate: %f\n",\
+    "s_d2h_poll_sync", s_d2h_poll_sync_, \
+    (double)s_d2h_poll_sync_/s_d2h_poll_suc_);
+
+#ifdef SIMBRICKS_CLOCK_PROFILING
+    fprintf(stderr, "%20s: %22f   %20s: %22f\n", \
+    "polling", (double)polling_, "do_sth", (double)do_sth_);
+#endif
+    exit(0);
 }
 
 Device::Device(const Params &p)
@@ -101,7 +141,17 @@ ResponsePort &Device::pciPioPort()
 void
 Device::init()
 {
+
+    d2h_poll_total_ = 0;
+    d2h_poll_suc_ = 0;
+    d2h_poll_sync_ = 0;
+    s_d2h_poll_total_ = 0;
+    s_d2h_poll_suc_ = 0;
+    s_d2h_poll_sync_ = 0;
+
     signal(SIGUSR1, sigusr1_handler);
+    signal(SIGUSR2, sigusr2_handler);
+    signal(SIGINT, sigint_handler);
     /* not calling parent init on purpose, as that will cause problems because
      * PIO port is not connected */
     if (!overridePort.isConnected())
@@ -110,6 +160,56 @@ Device::init()
         panic("DMA port (override) of %s not connected!", name());
     overridePort.sendRangeChange();
 }
+
+void
+Device::regStats()
+{
+    PciDevice::regStats();
+
+    d2h_poll_total
+    .name(name() + ".d2hPollTotal")
+    .desc("d2h_poll_total");
+
+    d2h_poll_suc
+    .name(name() + ".d2hPollSuc")
+    .desc("d2h_poll_suc");
+
+    d2h_poll_sync
+    .name(name() + ".d2hPollSync")
+    .desc("d2h_poll_sync");
+
+    polling
+    .name(name() + ".polling")
+    .desc("polling");
+
+    do_sth
+    .name(name() + ".do_sth")
+    .desc("do_sth");
+
+
+    s_d2h_poll_total
+    .name(name() + ".s_d2hPollTotal")
+    .desc("s_d2h_poll_total");
+
+    s_d2h_poll_suc
+    .name(name() + ".s_d2hPollSuc")
+    .desc("s_d2h_poll_suc");
+
+    s_d2h_poll_sync
+    .name(name() + ".s_d2hPollSync")
+    .desc("s_d2h_poll_sync");
+
+    s_polling
+    .name(name() + ".s_polling")
+    .desc("s_polling");
+
+    s_do_sth
+    .name(name() + ".s_do_sth")
+    .desc("s_do_sth");
+
+
+}
+
 
 void
 Device::readAsync(PciPioCompl &comp)
@@ -301,6 +401,11 @@ Device::pollQueues()
     uint64_t rid, addr, len;
     uint8_t ty;
 
+#ifdef SIMBRICKS_CLOCK_PROFILING
+    clock_t s_poll, e_poll, s_do, e_do;
+    s_poll = clock();
+#endif
+
     msg = d2hPoll();
     if (!msg)
         return false;
@@ -312,6 +417,18 @@ Device::pollQueues()
      * it */
     if (sync && devLastTime > curTick())
         return false;
+
+    d2h_poll_suc++;
+    d2h_poll_suc_++;
+    if (stat_flag){
+        s_d2h_poll_suc++;
+        s_d2h_poll_suc_++;
+    }
+
+
+#ifdef SIMBRICKS_CLOCK_PROFILING
+    s_do = clock();
+#endif
 
     ty = msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_D2H_MSG_MASK;
     switch (ty) {
@@ -386,6 +503,13 @@ Device::pollQueues()
 
 
         case SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC:
+            d2h_poll_sync++;
+            d2h_poll_sync_++;
+            if (stat_flag){
+                s_d2h_poll_sync++;
+                s_d2h_poll_sync_++;
+            }
+
             /* received sync message */
             break;
 
@@ -394,6 +518,23 @@ Device::pollQueues()
     }
 
     d2hDone(msg);
+
+#ifdef SIMBRICKS_CLOCK_PROFILING
+    e_do = clock();
+    e_poll = e_do;
+    polling += e_poll - s_poll;
+    do_sth += e_do - s_do;
+    polling_ += e_poll - s_poll;
+    do_sth_ += e_do - s_do;
+
+    if (stat_flag){
+        s_polling += e_poll - s_poll;
+        s_do_sth += e_do - s_do;
+        s_polling_ += e_poll - s_poll;
+        s_do_sth_ += e_do - s_do;
+    }
+#endif
+
     return true;
 }
 
@@ -674,6 +815,14 @@ volatile union SimbricksProtoPcieD2H *
 Device::d2hPoll()
 {
     volatile union SimbricksProtoPcieD2H *msg;
+
+    d2h_poll_total++;
+    d2h_poll_total_++;
+    if (stat_flag){
+        s_d2h_poll_total++;
+        s_d2h_poll_total_++;
+    }
+
 
     msg = (volatile union SimbricksProtoPcieD2H *)
         (this->d2hQueue + this->d2hPos * this->d2hElen);
