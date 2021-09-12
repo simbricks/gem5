@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -586,8 +587,14 @@ Device::queueCreate(const Params *p,
         goto error;
     }
 
+    struct stat sb;
+    if (fstat(fd, &sb)) {
+        perror("fstat failed");
+        goto error;
+    }
+
     void *addr;
-    if ((addr = mmap(nullptr, 32 * 1024 * 1024, PROT_READ | PROT_WRITE,
+    if ((addr = mmap(nullptr, sb.st_size, PROT_READ | PROT_WRITE,
                      MAP_SHARED | MAP_POPULATE, fd, 0)) == (void *)-1) {
         perror("mmap failed");
         goto error;
