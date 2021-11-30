@@ -10,9 +10,20 @@
 #include <debug/EthernetAll.hh>
 #include <dev/net/simbricks_pci.hh>
 
+#include <fstream>
+#include <iterator>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace Simbricks {
 namespace Pci {
+
+#define GEM5_BLOCK_LOGGING
+
+#ifdef GEM5_BLOCK_LOGGING
+static bool working_flag = false;
+static std::vector<int64_t> block_logging;
+#endif
 
 void sigusr1_handler(int dummy)
 {
@@ -72,10 +83,27 @@ SlavePort &Device::pciPioPort()
     return overridePort;
 }
 
+int64_t rdtsc_cycle() { return __builtin_ia32_rdtsc(); }
+
+void sigint_handler(int dummy)
+{
+    std::string total = std::to_string(std::clock());
+    std::string pid = std::to_string(getpid());
+    std::string file_name = std::string("gem5_block_logging_") + pid + std::string(".log");
+    std::ofstream output_file(file_name);
+    output_file << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
+    output_file << "Total clocks: " << total << '\n';
+    std::copy(block_logging.begin(), block_logging.end(), std::ostream_iterator<int64_t>(output_file, "\n"));
+    exit(0);
+}
+
 void
 Device::init()
 {
+    block_logging.push_back(rdtsc_cycle());
+
     signal(SIGUSR1, sigusr1_handler);
+    signal(SIGINT, sigint_handler);    
     /* not calling parent init on purpose, as that will cause problems because
      * PIO port is not connected */
     if (!overridePort.isConnected())
@@ -274,8 +302,22 @@ Device::pollQueues()
     uint8_t ty;
 
     msg = d2hPoll();
-    if (!msg)
+    if (!msg) {
+#ifdef GEM5_BLOCK_LOGGING
+        if (working_flag) {
+            block_logging.push_back(rdtsc_cycle());
+            working_flag = false;
+        }
+#endif
         return false;
+    }
+
+#ifdef GEM5_BLOCK_LOGGING
+        if (!working_flag) {
+            block_logging.push_back(rdtsc_cycle());
+            working_flag = true;
+        }
+#endif
 
     /* record the timestamp */
     devLastTime = msg->dummy.timestamp;
