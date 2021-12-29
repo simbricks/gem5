@@ -10,10 +10,8 @@
 #include <debug/EthernetAll.hh>
 #include <dev/net/simbricks_pci.hh>
 
-#include <fstream>
-#include <iterator>
-#include <sys/types.h>
 #include <unistd.h>
+#include <simbricks/proto/npy.hpp>
 
 namespace Simbricks {
 namespace Pci {
@@ -22,6 +20,8 @@ namespace Pci {
 
 #ifdef GEM5_BLOCK_LOGGING
 static bool working_flag = false;
+// to reduce the overhead, replace 'block_logging' with statically allocated memory and
+// employ another thread to log data into disks
 static std::vector<int64_t> block_logging;
 #endif
 
@@ -85,15 +85,13 @@ SlavePort &Device::pciPioPort()
 
 int64_t rdtsc_cycle() { return __builtin_ia32_rdtsc(); }
 
+// Todo: register interrupt handler for client nodes
 void sigint_handler(int dummy)
 {
-    std::string total = std::to_string(std::clock());
     std::string pid = std::to_string(getpid());
-    std::string file_name = std::string("gem5_block_logging_") + pid + std::string(".log");
-    std::ofstream output_file(file_name);
-    output_file << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
-    output_file << "Total clocks: " << total << '\n';
-    std::copy(block_logging.begin(), block_logging.end(), std::ostream_iterator<int64_t>(output_file, "\n"));
+    std::string file_name = std::string("gem5_block_logging_") + pid + std::string(".npy");
+    const long unsigned npy_shape[1] = {block_logging.size()};
+    npy::SaveArrayAsNumpy(file_name, false, 1, npy_shape, block_logging);
     exit(0);
 }
 
