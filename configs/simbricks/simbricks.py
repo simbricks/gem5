@@ -144,6 +144,23 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         other_params['MSIXPbaOffset'] = 0x1000 | 3
         other_params['BAR3Size'] = '32kB'
         other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
+    elif options.simbricks_type == 'femu':
+        other_params['BAR0Size'] = '1MB'
+        other_params['BAR0'] = 0xC0000000
+        other_params['VendorID'] = 0x1d1d
+        other_params['DeviceID'] = 0x1f1f
+        other_params['ClassCode'] = 0x1
+        other_params['SubClassCode'] = 0x8
+        other_params['ProgIF'] = 0x2
+        # enable msi-x
+        other_params['MSICAPNextCapability'] = 96
+        other_params['MSIXCAPBaseOffset'] = 96
+        other_params['MSIXCAPCapId'] = 0x11
+        other_params['MSIXMsgCtrl'] = 0x9
+        other_params['MSIXTableOffset'] = 0x0 | 3
+        other_params['MSIXPbaOffset'] = 0x800 | 3
+        other_params['BAR4Size'] = '4kB'
+        other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
 
     else:
         fatal('Unsupported simbricks pci type (' + options.simbricks_type + ')')
