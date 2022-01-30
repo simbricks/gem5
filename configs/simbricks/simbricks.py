@@ -144,11 +144,20 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         other_params['MSIXPbaOffset'] = 0x1000 | 3
         other_params['BAR3Size'] = '32kB'
         other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
+    elif options.simbricks_type == 'e1000':
+        other_params['BAR0Size'] = '128kB'
+        other_params['BAR0'] = 0xC0000000
+        other_params['VendorID'] = 0x8086
+        other_params['DeviceID'] = 0x1075
+
+
 
     else:
         fatal('Unsupported simbricks pci type (' + options.simbricks_type + ')')
 
     class PCIPc(Pc):
+
+        # if it's e1000 nic: set pci_bus=0, pci_dev=0, pci_func=0, InterruptLine=1, InterruptPin=1,
         ethernet = SimbricksPci(
                          pci_bus=0, pci_dev=2, pci_func=0,
                          InterruptLine=15, InterruptPin=1,
@@ -171,11 +180,50 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
             self.ethernet.pio = bus.master
             self.ethernet.dma = bus.slave
 
+    class PCIPc_e(Pc):
+        # if it's e1000 nic: set pci_bus=0, pci_dev=0, pci_func=0, InterruptLine=1, InterruptPin=1,
+        ethernet = SimbricksPci(
+                         pci_bus=0, pci_dev=0, pci_func=0,
+                         InterruptLine=1, InterruptPin=1,
+                         CapabilityPtr=64,
+                         MSICAPBaseOffset=64,
+                         MSICAPCapId=0x5,
+                         MSICAPMsgCtrl=0x8a,
+                         uxsocket_path=options.simbricks_pci,
+                         shm_path=options.simbricks_shm,
+                         sync=options.simbricks_sync,
+                         poll_interval=('%dns' % (options.simbricks_poll_int)),
+                         pci_asychrony=('%dns' % (options.simbricks_pci_lat)),
+                         sync_tx_interval=('%dns' % (
+                             options.simbricks_sync_int)),
+                         LegacyIOBase = 0x8000000000000000,
+                         **other_params)
+
+        def attachIO(self, bus, dma_ports = []):
+            super(PCIPc_e, self).attachIO(bus, dma_ports)
+            self.ethernet.pio = bus.master
+            self.ethernet.dma = bus.slave     
+
+    class PCIPc_e1000(Pc):
+        ethernet = IGbE_e1000(pci_bus=0, pci_dev=0, pci_func=0,
+                                   InterruptLine=1, InterruptPin=1)
+
+        def attachIO(self, bus, dma_ports = []):
+            super(PCIPc_e1000, self).attachIO(bus, dma_ports)
+            self.ethernet.pio = bus.master
+            self.ethernet.dma = bus.slave
 
     # Platform
     if (noSimbricks):
         self.pc = Pc()
+    elif (options.simbricks_etherlink):
+        # Use Gem5 integrated NIC e1000
+        self.pc = PCIPc_e1000()
+    elif (options.simbricks_type == 'e1000'):
+        # Simbricks NIC use e1000
+        self.pc = PCIPc_e()
     else:
+        # Simbricks NIC use corundum/i40e
         self.pc = PCIPc()
 
     self.pc.com_1.device = Terminal(port = options.termport, outfile =
@@ -452,6 +500,8 @@ parser.add_option("--termport", action="store", type="int",
         default="3456", help="port for terminal to listen on")
 parser.add_option("--simbricks-pci", action="store", type="string",
         default="/tmp/simbricks-pci", help="Simbricks PCI Unix socket")
+parser.add_option("--simbricks-eth", action="store", type="string",
+        default="/tmp/simbricks-eth", help="Simbricks PCI Unix socket")
 parser.add_option("--simbricks-shm", action="store", type="string",
         default="/dev/shm/dummy_nic_shm", help="Simbricks shared memory region")
 parser.add_option("--simbricks-sync", action="store_true",
@@ -463,6 +513,8 @@ parser.add_option("--no-simbricks", action="store_true",
 
 parser.add_option("--simbricks-pci-lat", action="store", type="int",
         default=500, help="Simbricks PCI latency in ns")
+parser.add_option("--simbricks-eth-lat", action="store", type="int",
+        default=500, help="Simbricks eth latency in ns")
 parser.add_option("--simbricks-sync-int", action="store", type="int",
         default=100, help="Simbricks sync interval in ns")
 parser.add_option("--simbricks-poll-int", action="store", type="int",
@@ -470,6 +522,9 @@ parser.add_option("--simbricks-poll-int", action="store", type="int",
 
 parser.add_option("--simbricks-type", action="store", type="string",
         default="corundum", help="Device type (corundum/i40e)")
+
+parser.add_option("--simbricks-etherlink", action="store_true",
+            help="Use simbicks etherlink")
 
 (options, args) = parser.parse_args()
 
@@ -488,6 +543,18 @@ bm = [SysConfig(disks=options.disk_image, rootdev=options.root_device,
 np = options.num_cpus
 sys = build_system(np)
 root = Root(full_system=True, system=sys)
+
+if options.simbricks_etherlink:
+    root.etherlink = SimbricksEtherLink(uxsocket_path = options.simbricks_eth,
+                            shm_path = options.simbricks_shm,
+                            sync = options.simbricks_sync,
+                            poll_interval = ('%dns' % (options.simbricks_poll_int)),
+                            sync_tx_interval = ('%dns' % (options.simbricks_sync_int)),
+                            eth_delay = ('%dns' % (options.simbricks_eth_lat)))
+    if hasattr(sys, 'pc'):
+        root.etherlink.int0 = sys.pc.ethernet.interface
+    else:
+        fatal("Don't know how to connect DistEtherLink to this system")
 
 if options.timesync:
     root.time_sync_enable = True
