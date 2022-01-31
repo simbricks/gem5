@@ -81,6 +81,22 @@ class DistEtherLink(SimObject):
     dist_sync_on_pseudo_op = Param.Bool(False, "Start sync with pseudo_op")
     num_nodes = Param.UInt32('2', "Number of simulate nodes")
 
+class SimbricksEtherLink(SimObject):
+    type = 'SimbricksEtherLink'
+    cxx_header = "dev/net/simbricks_ethernet.hh"
+    cxx_class = 'gem5::SimbricksEtherLink'
+
+    int0 = EtherInt("interface 0")
+    eth_delay = Param.Latency('500ns', "ethernet latency")
+    poll_interval = Param.Latency('1us', "poll interval size")
+    sync_tx_interval = Param.Latency('500ns', "interval between syncs")
+
+    uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("Shared memory path")
+    sync = Param.Bool(False, "Synchronize over ethernet")
+    sync_mode = Param.Int(0,
+            "Synchronization mode: 0 - SimBricks, 1 - Barrier")
+
 class EtherBus(SimObject):
     type = 'EtherBus'
     cxx_header = "dev/net/etherbus.hh"

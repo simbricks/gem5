@@ -73,6 +73,12 @@ DebugFlag('DistEthernet')
 DebugFlag('DistEthernetPkt')
 DebugFlag('DistEthernetCmd')
 
+
+# Simbricks
+Source('simbricks_ethernet.cc')
+
+DebugFlag('SimbricksEthernet')
+
 # Ethernet controllers
 Source('i8254xGBe.cc')
 Source('ns_gige.cc')

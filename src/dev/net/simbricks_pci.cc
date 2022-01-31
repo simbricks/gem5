@@ -324,7 +324,14 @@ Device::pollQueues()
                 msi_signal(intr->vector);
             } else if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_MSIX) {
                 msix_signal(intr->vector);
-            } else {
+            } 
+            else if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI){
+                intrPost();
+            }
+            else if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO){
+                intrClear();
+            }
+            else {
                 panic("unsupported inttype=0x%x", intr->inttype);
             }
             break;
