@@ -87,7 +87,10 @@ class IGbE : public EtherDevice
     Tick fetchDelay, wbDelay;
     Tick fetchCompDelay, wbCompDelay;
     Tick rxWriteDelay, txReadDelay;
+    Tick pciAsynchrony;
 
+    void processIntrPostEvent();
+    void processIntrClearEvent();
     // Event and function to deal with RDTR timer expiring
     void rdtrProcess() {
         rxDescCache.writeback(0);
@@ -131,6 +134,8 @@ class IGbE : public EtherDevice
     void tick();
     EventFunctionWrapper tickEvent;
 
+    EventFunctionWrapper intrPostEvent;
+    EventFunctionWrapper intrClearEvent;
 
     uint64_t macAddr;
 

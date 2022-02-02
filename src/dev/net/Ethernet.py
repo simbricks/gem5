@@ -171,6 +171,7 @@ class IGbE(EtherDevice):
     rx_write_delay = Param.Latency('0ns', "delay after rx dma read")
     phy_pid = Param.UInt16("Phy PID that corresponds to device ID")
     phy_epid = Param.UInt16("Phy EPID that corresponds to device ID")
+    pci_asychrony = Param.Latency('500ns', "PCI latency")
 
 class IGbE_e1000(IGbE):
     # Older Intel 8254x based gigabit ethernet adapter
