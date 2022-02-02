@@ -187,6 +187,7 @@ class IGbE(EtherDevice):
     rx_write_delay = Param.Latency('0ns', "delay after rx dma read")
     phy_pid = Param.UInt16("Phy PID that corresponds to device ID")
     phy_epid = Param.UInt16("Phy EPID that corresponds to device ID")
+    pci_asychrony = Param.Latency('500ns', "PCI latency")
 
 class IGbE_e1000(IGbE):
     # Older Intel 8254x based gigabit ethernet adapter
@@ -200,6 +201,7 @@ class IGbE_e1000(IGbE):
     wb_comp_delay =  Param.Latency('1010ns', "delay after desc wb occurs")
     rx_write_delay =  Param.Latency('500ns', "delay after rx dma read")
     pio_latency = Param.Latency('1000ns', "Programmed IO latency")
+
 class IGbE_igb(IGbE):
     # Newer Intel 8257x based gigabit ethernet adapter
     # Uses Intel igb driver and in theory supports packet splitting and LRO

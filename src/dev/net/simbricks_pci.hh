@@ -154,8 +154,6 @@ private:
     void d2hDone(volatile union SimbricksProtoPcieD2H *msg);
     void processPollEvent();
     void processSyncTxEvent();
-    void processintrPostEvent();
-    void processintrClearEvent();
     int pciFd;
 
     uint8_t *d2hQueue;
@@ -170,8 +168,7 @@ private:
 
     EventFunctionWrapper pollEvent;
     EventFunctionWrapper syncTxEvent;
-    EventFunctionWrapper intrPostEvent;
-    EventFunctionWrapper intrClearEvent;
+
     int pollInterval;
     int syncTxInterval;
 };

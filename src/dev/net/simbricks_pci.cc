@@ -28,10 +28,8 @@ Device::Device(const Params *p)
     h2dQueue(nullptr), h2dPos(0), h2dElen(0), h2dEnum(0),
     pollEvent([this]{processPollEvent();}, name()),
     syncTxEvent([this]{processSyncTxEvent();}, name()),
-    intrPostEvent([this]{processintrPostEvent();}, name()),
-    intrClearEvent([this]{processintrClearEvent();}, name()),
     pollInterval(p->poll_interval), syncTxInterval(p->sync_tx_interval)
-{
+    {
     this->interface = new Interface(name() + ".int0", this);
     if (!nicsimInit(p)) {
         panic("simbricks-pci: failed to initialize simbricks connection");
@@ -262,15 +260,6 @@ Device::dmaDone(DMACompl &comp)
     }
 }
 
-void
-Device::processintrPostEvent(){
-    intrPost();
-}
-void
-Device::processintrClearEvent(){
-    intrClear();
-}
-
 
 bool
 Device::pollQueues()
@@ -339,10 +328,10 @@ Device::pollQueues()
                 msix_signal(intr->vector);
             } 
             else if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI){
-                schedule(this->intrPostEvent, curTick() + this->syncTxInterval);
+                intrPost();
             }
             else if (intr->inttype == SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO){
-                schedule(this->intrClearEvent, curTick() + this->syncTxInterval);
+                intrClear();
             }
             else {
                 panic("unsupported inttype=0x%x", intr->inttype);

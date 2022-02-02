@@ -62,11 +62,14 @@ IGbE::IGbE(const Params *p)
       pktOffset(0), fetchDelay(p->fetch_delay), wbDelay(p->wb_delay),
       fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay),
       rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),
+      pciAsynchrony(p->pci_asychrony),
       rdtrEvent([this]{ rdtrProcess(); }, name()),
       radvEvent([this]{ radvProcess(); }, name()),
       tadvEvent([this]{ tadvProcess(); }, name()),
       tidvEvent([this]{ tidvProcess(); }, name()),
       tickEvent([this]{ tick(); }, name()),
+      intrPostEvent([this]{ processIntrPostEvent(); }, name()),
+      intrClearEvent([this]{ processIntrClearEvent(); }, name()),
       interEvent([this]{ delayIntEvent(); }, name()),
       rxDescCache(this, name()+".RxDesc", p->rx_desc_cache_size),
       txDescCache(this, name()+".TxDesc", p->tx_desc_cache_size),
@@ -728,6 +731,14 @@ IGbE::delayIntEvent()
     cpuPostInt();
 }
 
+void
+IGbE::processIntrPostEvent(){
+    intrPost();
+}
+void
+IGbE::processIntrClearEvent(){
+    intrClear();
+}
 
 void
 IGbE::cpuPostInt()
@@ -768,7 +779,8 @@ IGbE::cpuPostInt()
     DPRINTF(EthernetIntr, "EINT: Posting interrupt to CPU now. Vector %#x\n",
             regs.icr());
 
-    intrPost();
+    //intrPost();
+    schedule(this->intrPostEvent, curTick() + this->pciAsynchrony);
 
     lastInterrupt = curTick();
 }
@@ -781,7 +793,8 @@ IGbE::cpuClearInt()
         DPRINTF(EthernetIntr,
                 "EINT: Clearing interrupt to CPU now. Vector %#x\n",
                 regs.icr());
-        intrClear();
+        //intrClear();
+        schedule(this->intrClearEvent, curTick() + this->pciAsynchrony);
     }
 }
 
