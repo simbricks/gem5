@@ -195,6 +195,11 @@ class IGbE_e1000(IGbE):
     phy_pid = 0x02A8
     phy_epid = 0x0380
 
+    fetch_comp_delay =  Param.Latency('1010ns', "delay after desc fetch occurs")
+    tx_read_delay = Param.Latency('1000ns', "delay after tx dma read")
+    wb_comp_delay =  Param.Latency('1010ns', "delay after desc wb occurs")
+    rx_write_delay =  Param.Latency('500ns', "delay after rx dma read")
+    pio_latency = Param.Latency('1000ns', "Programmed IO latency")
 class IGbE_igb(IGbE):
     # Newer Intel 8257x based gigabit ethernet adapter
     # Uses Intel igb driver and in theory supports packet splitting and LRO
