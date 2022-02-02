@@ -146,7 +146,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
     elif options.simbricks_type == 'e1000':
         other_params['BAR0Size'] = '128kB'
-        other_params['BAR0'] = 0xC0000000
+        #other_params['BAR0'] = 0xC0000000
         other_params['VendorID'] = 0x8086
         other_params['DeviceID'] = 0x1075
 
@@ -185,10 +185,15 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         ethernet = SimbricksPci(
                          pci_bus=0, pci_dev=0, pci_func=0,
                          InterruptLine=1, InterruptPin=1,
-                         CapabilityPtr=64,
-                         MSICAPBaseOffset=64,
-                         MSICAPCapId=0x5,
-                         MSICAPMsgCtrl=0x8a,
+                         CapabilityPtr=0,
+                         MSICAPBaseOffset=0,
+                         MSICAPCapId=0,
+                         MSICAPMsgCtrl=0,
+                         Status=0,
+                         MaximumLatency=0,
+                         MinimumGrant=0xff,
+                         SubsystemID=0x1008,
+                         SubsystemVendorID=0x8086,
                          uxsocket_path=options.simbricks_pci,
                          shm_path=options.simbricks_shm,
                          sync=options.simbricks_sync,
