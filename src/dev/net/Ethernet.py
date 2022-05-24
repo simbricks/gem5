@@ -275,34 +275,3 @@ class Sinic(EtherDevBase):
     InterruptPin = 0x01
     BAR0Size = '64kB'
 
-class SimbricksPci(EtherDevBase):
-    type = 'SimbricksPci'
-    cxx_class = 'Simbricks::Pci::Device'
-    cxx_header = "dev/net/simbricks_pci.hh"
-
-    uxsocket_path = Param.String("unix socket path")
-    shm_path = Param.String("Shared memory path")
-
-    sync = Param.Bool(False, "Synchronize over PCI")
-    sync_mode = Param.Int(0, "Synchronization mode: 0 - ModES, 1 - Barrier")
-    poll_interval = Param.Latency('1us', "poll interval size")
-    sync_tx_interval = Param.Latency('100ns', "interval between syncs")
-    pci_asychrony = Param.Latency('500ns', "PCI latency")
-
-    VendorID = 0x5543
-    DeviceID = 0x1001
-    Status = 0x0290
-    SubClassCode = 0x00
-    ClassCode = 0x02
-    ProgIF = 0x00
-    BAR0 = 0x00000000
-    BAR1 = 0x00000000
-    BAR2 = 0x00000000
-    BAR3 = 0x00000000
-    BAR4 = 0x00000000
-    BAR5 = 0x00000000
-    MaximumLatency = 0x34
-    MinimumGrant = 0xb0
-    InterruptLine = 0x1e
-    InterruptPin = 0x01
-    BAR0Size = '32MB'
