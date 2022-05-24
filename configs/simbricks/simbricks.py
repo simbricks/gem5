@@ -166,7 +166,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         fatal('Unsupported simbricks pci type (' + options.simbricks_type + ')')
 
     class PCIPc(Pc):
-        ethernet = SimbricksPci(
+        ethernet = SimBricksPci(
                          pci_bus=0, pci_dev=2, pci_func=0,
                          InterruptLine=15, InterruptPin=1,
                          CapabilityPtr=64,
@@ -177,7 +177,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
                          shm_path=options.simbricks_shm,
                          sync=options.simbricks_sync,
                          poll_interval=('%dns' % (options.simbricks_poll_int)),
-                         pci_asychrony=('%dns' % (options.simbricks_pci_lat)),
+                         pci_latency=('%dns' % (options.simbricks_pci_lat)),
                          sync_tx_interval=('%dns' % (
                              options.simbricks_sync_int)),
                          LegacyIOBase = 0x8000000000000000,

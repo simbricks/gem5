@@ -1,8 +1,4 @@
-# -*- mode:python -*-
-
-# Copyright (c) 2022 Max Planck Institute for Software Systems, and
-# National University of Singapore
-#
+# Copyright (c) 2015 ARM Limited
 # All rights reserved.
 #
 # The license below extends only to copyright in the software and shall
@@ -14,7 +10,7 @@
 # unmodified and in its entirety in all distributions of the software,
 # modified or unmodified, in source code or in binary form.
 #
-# Copyright (c) 2006 The Regents of The University of Michigan
+# Copyright (c) 2005-2007 The Regents of The University of Michigan
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,16 +36,39 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Import('*')
+from m5.defines import buildEnv
+from m5.SimObject import SimObject
+from m5.params import *
+from m5.proxy import *
+from m5.objects.PciDevice import PciDevice
 
-if env['USE_SIMBRICKS']:
-    SimObject('SimBricks.py')
+class SimBricksPci(PciDevice):
+    type = 'SimBricksPci'
+    cxx_class = 'simbricks::pci::Device'
+    cxx_header = "simbricks/pci.hh"
 
-    Source('base.cc')
-    Source('init_manager.cc')
-    Source('pci.cc')
+    listen = Param.Bool(False, "Open listening instead of connecting")
+    uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("Shared memory path")
+    sync = Param.Bool(False, "Synchronize over PCI")
+    poll_interval = Param.Latency('1us', "poll interval size (unsync only)")
+    sync_tx_interval = Param.Latency('500ns', "interval between syncs")
+    pci_latency = Param.Latency('500ns', "PCI latency")
 
-DebugFlag('SimBricks')
-DebugFlag('SimBricksSync')
-DebugFlag('SimBricksPci')
-CompoundFlag('SimBricksAll', [ 'SimBricks', 'SimBricksSync', 'SimBricksPci'])
+    VendorID = 0x5543
+    DeviceID = 0x1001
+    Status = 0x0290
+    SubClassCode = 0x00
+    ClassCode = 0x02
+    ProgIF = 0x00
+    BAR0 = 0x00000000
+    BAR1 = 0x00000000
+    BAR2 = 0x00000000
+    BAR3 = 0x00000000
+    BAR4 = 0x00000000
+    BAR5 = 0x00000000
+    MaximumLatency = 0x34
+    MinimumGrant = 0xb0
+    InterruptLine = 0x1e
+    InterruptPin = 0x01
+    BAR0Size = '32MB'
