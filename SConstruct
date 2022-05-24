@@ -921,10 +921,10 @@ if not have_hdf5:
     print("         HDF5 support.")
 
 
-have_simbricks = conf.CheckCHeader('simbricks/proto/pcie.h', '<>')
+have_simbricks = conf.CheckLibWithHeader('simbricks', 'simbricks/base/if.h',
+    'C', 'struct SimbricksBaseIfParams p; SimbricksBaseIfDefaultParams(&p);')
 if not have_simbricks:
-    warning('Did not find simbricks pcie protocol header \n'
-            '(simbricks/proto/pcie.h). Disabling simbricks module.')
+    warning('Did not find simbricks library, disabling simbricks modules.')
 
 ######################################################################
 #
