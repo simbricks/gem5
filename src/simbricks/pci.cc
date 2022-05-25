@@ -70,7 +70,93 @@ Device::introInReceived(const void *data, size_t len)
     if (len < sizeof(*di))
         panic("introInReceived: intro short");
 
-    // TODO: update device info, vendor, bars etc.
+    config.vendor = di->pci_vendor_id;
+    config.device = di->pci_device_id;
+    config.revision = di->pci_revision;
+    config.classCode = di->pci_class;
+    config.subClassCode = di->pci_subclass;
+    config.progIF = di->pci_progif;
+
+    // fill in BAR details
+    for (int i = 0; i < 6; i++) {
+        uint64_t flags = di->bars[i].flags;
+        BARAddrs[i] = 0;
+        BARSize[i] = di->bars[i].len;
+        config.baseAddr[i] = 0x0;
+        if ((flags & SIMBRICKS_PROTO_PCIE_BAR_IO)) {
+            config.baseAddr[i] = 0x1;
+        } else if (BARSize[i] > 0) {
+            // 64-bit bars seem to break things?
+            /*if ((flags & SIMBRICKS_PROTO_PCIE_BAR_64))
+                config.baseAddr[i] |= 0x4;*/
+            if ((flags & SIMBRICKS_PROTO_PCIE_BAR_PF))
+                config.baseAddr[i] |= 0x8;
+        }
+    }
+
+    // Prepare MSI and MSI-X capabilities as needed (ugh)
+    int cap_off = 64;
+    uint8_t *next_ptr = nullptr;
+    if (di->pci_msi_nvecs > 0) {
+        MSICAP_BASE = cap_off;
+        if (next_ptr)
+            *next_ptr = MSICAP_BASE;
+        else
+            config.capabilityPtr = MSICAP_BASE;
+        cap_off += sizeof(msicap);
+        next_ptr = (((uint8_t *) &msicap) + 1);
+
+        msicap.mid = 0x5;
+        msicap.mc = 0x80;
+        uint8_t x = 0;
+        switch (di->pci_msi_nvecs) {
+            case 1: x = 0; break;
+            case 2: x = 1; break;
+            case 4: x = 2; break;
+            case 8: x = 3; break;
+            case 16: x = 4; break;
+            case 32: x = 5; break;
+            default:
+                panic("Invalid number of msi vectors");
+        }
+        msicap.mc |= (x << 1);
+    }
+    if (di->pci_msix_nvecs > 0) {
+        MSIXCAP_BASE = cap_off;
+        if (next_ptr)
+            *next_ptr = MSIXCAP_BASE;
+        else
+            config.capabilityPtr = MSIXCAP_BASE;
+        cap_off += sizeof(msixcap);
+        next_ptr = ((uint8_t *) &msixcap + 1);
+
+        msixcap.mxid = 0x11;
+        msixcap.mxc = di->pci_msix_nvecs - 1;
+        msixcap.mtab = di->pci_msix_table_offset | di->pci_msix_table_bar;
+        msixcap.mpba = di->pci_msix_pba_offset | di->pci_msix_pba_bar;
+
+        MSIXTable tmp1 = {{0UL,0UL,0UL,0UL}};
+        msix_table.resize(di->pci_msix_nvecs , tmp1);
+        MSIXPbaEntry tmp2 = {0};
+        int pba_size = di->pci_msix_nvecs / MSIXVECS_PER_PBA;
+        if ((di->pci_msix_nvecs % MSIXVECS_PER_PBA) > 0) {
+            pba_size++;
+        }
+        msix_pba.resize(pba_size, tmp2);
+
+        MSIX_TABLE_BAR = di->pci_msix_table_bar;
+        MSIX_TABLE_OFFSET = di->pci_msix_table_offset;
+        MSIX_TABLE_END = MSIX_TABLE_OFFSET +
+                        di->pci_msix_nvecs * sizeof(MSIXTable);
+        MSIX_PBA_BAR = di->pci_msix_pba_bar;
+        MSIX_PBA_OFFSET = di->pci_msix_pba_offset;
+        MSIX_PBA_END = MSIX_PBA_OFFSET +
+                    ((di->pci_msix_nvecs + 1) / MSIXVECS_PER_PBA)
+                    * sizeof(MSIXPbaEntry);
+        if (((di->pci_msix_nvecs + 1) % MSIXVECS_PER_PBA) > 0) {
+            MSIX_PBA_END += sizeof(MSIXPbaEntry);
+        }
+    }
 }
 
 void
