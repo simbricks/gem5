@@ -379,10 +379,10 @@ if main['GCC'] or main['CLANG']:
 
     # Treat warnings as errors but white list some warnings that we
     # want to allow (e.g., deprecation warnings).
-    main.Append(CCFLAGS=['-Werror',
-                         '-Wno-error=deprecated-declarations',
-                         '-Wno-error=deprecated',
-                        ])
+    #main.Append(CCFLAGS=['-Werror',
+    #                     '-Wno-error=deprecated-declarations',
+    #                     '-Wno-error=deprecated',
+    #                    ])
 else:
     error('\n'.join((
           "Don't know what compiler options to use for your compiler.",
