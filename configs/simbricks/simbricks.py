@@ -121,58 +121,10 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         self.mem_ranges = [AddrRange('3GB'),
             AddrRange(Addr('4GB'), size = excess_mem_size)]
 
-    other_params = {}
-    if options.simbricks_type == 'corundum':
-        other_params['BAR0Size'] = '32MB'
-        other_params['BAR0'] = 0xC0000000
-        other_params['VendorID'] = 0x5543
-        other_params['DeviceID'] = 0x1001
-    elif options.simbricks_type == 'i40e':
-        other_params['BAR0Size'] = '4MB'
-        other_params['BAR0'] = 0xC0000000
-        other_params['BAR2Size'] = '32B'
-        other_params['BAR2'] = 0x2000
-        other_params['BAR2LegacyIO'] = True
-        other_params['VendorID'] = 0x8086
-        other_params['DeviceID'] = 0x1572
-        # enable msi-x
-        other_params['MSICAPNextCapability'] = 96
-        other_params['MSIXCAPBaseOffset'] = 96
-        other_params['MSIXCAPCapId'] = 0x11
-        other_params['MSIXMsgCtrl'] = 0x7f
-        other_params['MSIXTableOffset'] = 0x0 | 3
-        other_params['MSIXPbaOffset'] = 0x1000 | 3
-        other_params['BAR3Size'] = '32kB'
-        other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
-    elif options.simbricks_type == 'femu':
-        other_params['BAR0Size'] = '1MB'
-        other_params['BAR0'] = 0xC0000000
-        other_params['VendorID'] = 0x1d1d
-        other_params['DeviceID'] = 0x1f1f
-        other_params['ClassCode'] = 0x1
-        other_params['SubClassCode'] = 0x8
-        other_params['ProgIF'] = 0x2
-        # enable msi-x
-        other_params['MSICAPNextCapability'] = 96
-        other_params['MSIXCAPBaseOffset'] = 96
-        other_params['MSIXCAPCapId'] = 0x11
-        other_params['MSIXMsgCtrl'] = 0x9
-        other_params['MSIXTableOffset'] = 0x0 | 3
-        other_params['MSIXPbaOffset'] = 0x800 | 3
-        other_params['BAR4Size'] = '4kB'
-        other_params['BAR3'] = 0xC0000000 + 32 * 1024 * 1024
-
-    else:
-        fatal('Unsupported simbricks pci type (' + options.simbricks_type + ')')
-
     class PCIPc(Pc):
         ethernet = SimBricksPci(
                          pci_bus=0, pci_dev=2, pci_func=0,
                          InterruptLine=15, InterruptPin=1,
-                         CapabilityPtr=64,
-                         MSICAPBaseOffset=64,
-                         MSICAPCapId=0x5,
-                         MSICAPMsgCtrl=0x8a,
                          uxsocket_path=options.simbricks_pci,
                          shm_path=options.simbricks_shm,
                          sync=options.simbricks_sync,
@@ -180,8 +132,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
                          pci_latency=('%dns' % (options.simbricks_pci_lat)),
                          sync_tx_interval=('%dns' % (
                              options.simbricks_sync_int)),
-                         LegacyIOBase = 0x8000000000000000,
-                         **other_params)
+                         LegacyIOBase = 0x8000000000000000)
 
         def attachIO(self, bus, dma_ports = []):
             super(PCIPc, self).attachIO(bus, dma_ports)
