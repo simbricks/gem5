@@ -77,20 +77,20 @@ class PciDevice : public DmaDevice
     int caps_start;
     int caps_end;
 
-    const int PMCAP_BASE;
-    const int PMCAP_ID_OFFSET;
-    const int PMCAP_PC_OFFSET;
-    const int PMCAP_PMCS_OFFSET;
+    int PMCAP_BASE;
+    int PMCAP_ID_OFFSET;
+    int PMCAP_PC_OFFSET;
+    int PMCAP_PMCS_OFFSET;
     PMCAP pmcap;
 
-    const int MSICAP_BASE;
+    int MSICAP_BASE;
     MSICAP msicap;
 
-    const int MSIXCAP_BASE;
-    const int MSIXCAP_ID_OFFSET;
-    const int MSIXCAP_MXC_OFFSET;
-    const int MSIXCAP_MTAB_OFFSET;
-    const int MSIXCAP_MPBA_OFFSET;
+    int MSIXCAP_BASE;
+    int MSIXCAP_ID_OFFSET;
+    int MSIXCAP_MXC_OFFSET;
+    int MSIXCAP_MTAB_OFFSET;
+    int MSIXCAP_MPBA_OFFSET;
     int MSIX_TABLE_BAR;
     int MSIX_TABLE_OFFSET;
     int MSIX_TABLE_END;
