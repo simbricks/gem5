@@ -163,7 +163,7 @@ void
 Device::initIfParams(SimbricksBaseIfParams &p)
 {
     SimbricksPcieIfDefaultParams(&p);
-    p.link_latency = params()->pci_latency;
+    p.link_latency = params()->link_latency;
     p.sync_interval = params()->sync_tx_interval;
 }
 

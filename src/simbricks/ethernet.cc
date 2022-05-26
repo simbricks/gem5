@@ -72,7 +72,7 @@ void
 Adapter::initIfParams(SimbricksBaseIfParams &p)
 {
     SimbricksNetIfDefaultParams(&p);
-    p.link_latency = params()->eth_latency;
+    p.link_latency = params()->link_latency;
     p.sync_interval = params()->sync_tx_interval;
 }
 

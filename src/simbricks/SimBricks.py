@@ -51,11 +51,11 @@ class SimBricksPci(PciDevice):
 
     listen = Param.Bool(False, "Open listening instead of connecting")
     uxsocket_path = Param.String("unix socket path")
-    shm_path = Param.String("Shared memory path")
+    shm_path = Param.String('', "Shared memory path")
     sync = Param.Bool(False, "Synchronize over PCI")
-    poll_interval = Param.Latency('1us', "poll interval size (unsync only)")
+    poll_interval = Param.Latency('100us', "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency('500ns', "interval between syncs")
-    pci_latency = Param.Latency('500ns', "PCI latency")
+    link_latency = Param.Latency('500ns', "PCI latency")
 
     Status = 0x0290
     MaximumLatency = 0x34
@@ -79,4 +79,4 @@ class SimBricksEthernet(SimObject):
     sync = Param.Bool(False, "Synchronize over Ethernet")
     poll_interval = Param.Latency('1us', "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency('500ns', "interval between syncs")
-    eth_latency = Param.Latency('500ns', "Ethernet latency")
+    link_latency = Param.Latency('500ns', "Ethernet latency")
