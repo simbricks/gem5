@@ -21,6 +21,47 @@ from common import ObjectList
 from common.Caches import *
 from common import Options
 
+def malformedSimBricksUrl(s):
+    print("Error: SimBricks URL", s, "is malformed")
+    sys.exit(1)
+
+# Parse SimBricks "URLs" in the following format:
+# ADDR[ARGS]
+# ADDR = connect:UX_SOCKET_PATH |
+#        listen:UX_SOCKET_PATH:SHM_PATH
+# ARGS = :sync | :link_latency=XX | :sync_interval=XX
+def parseSimBricksUrl(s):
+    out = {'sync': False}
+    parts = s.split(':')
+    if len(parts) < 2:
+        malformedSimBricksUrl(s)
+
+    if parts[0] == 'connect':
+        out['listen'] = False
+        out['uxsocket_path'] = parts[1]
+        parts = parts[2:]
+    elif parts[0] == 'listen':
+        if len(parts) < 3:
+            malformedSimBricksUrl(s)
+        out['listen'] = True
+        out['uxsocket_path'] = parts[1]
+        out['shm_path'] = parts[2]
+        parts = parts[3:]
+    else:
+        malformedSimBricksUrl(s)
+
+    for p in parts:
+        if p == 'sync':
+            out['sync'] = True
+        elif p.startswith('sync_interval='):
+            out['sync_tx_interval'] = p.split('=')[1]
+        elif p.startswith('latency='):
+            out['link_latency'] = p.split('=')[1]
+        else:
+            malformedSimBricksUrl(s)
+    return out
+
+
 class CowIdeDisk(IdeDisk):
     image = CowDiskImage(child=RawDiskImage(read_only=True),
                          read_only=False)
@@ -91,7 +132,7 @@ def connectX86ClassicSystem(x86_sys, numCPUs):
 
     x86_sys.system_port = x86_sys.membus.slave
 
-def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, noSimbricks=False) :
+def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
     self = System()
 
     if workload is None:
@@ -121,30 +162,39 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
         self.mem_ranges = [AddrRange('3GB'),
             AddrRange(Addr('4GB'), size = excess_mem_size)]
 
-    class PCIPc(Pc):
-        ethernet = SimBricksPci(
-                         pci_bus=0, pci_dev=2, pci_func=0,
+    class SimBricksPc(Pc):
+        def __init__(self):
+            super(SimBricksPc, self).__init__()
+            self._num_simbricks = 0
+            self._devid_next = 2
+
+        def add_simbricks_pci(self, url):
+            print('adding simbricks pci:', url)
+            params = parseSimBricksUrl(url)
+            dev = SimBricksPci(
+                         pci_bus=0, pci_dev=self._devid_next, pci_func=0,
                          InterruptLine=15, InterruptPin=1,
-                         uxsocket_path=options.simbricks_pci,
-                         shm_path=options.simbricks_shm,
-                         sync=options.simbricks_sync,
-                         poll_interval=('%dns' % (options.simbricks_poll_int)),
-                         pci_latency=('%dns' % (options.simbricks_pci_lat)),
-                         sync_tx_interval=('%dns' % (
-                             options.simbricks_sync_int)),
-                         LegacyIOBase = 0x8000000000000000)
+                         LegacyIOBase = 0x8000000000000000,
+                         **params)
+            setattr(self, 'simbricks_' + str(self._num_simbricks), dev)
+            self._devid_next += 1
+            self._num_simbricks += 1
 
         def attachIO(self, bus, dma_ports = []):
-            super(PCIPc, self).attachIO(bus, dma_ports)
-            self.ethernet.pio = bus.master
-            self.ethernet.dma = bus.slave
+            super(SimBricksPc, self).attachIO(bus, dma_ports)
+            print('connecting', self._num_simbricks)
+            for i in range(0, self._num_simbricks):
+                dev = getattr(self, 'simbricks_' + str(i))
+                dev.pio = bus.master
+                dev.dma = bus.slave
 
 
     # Platform
-    if (noSimbricks):
-        self.pc = Pc()
-    else:
-        self.pc = PCIPc()
+    self.pc = SimBricksPc()
+
+   # Add simbricks pci adapters as needed
+    for url in options.simbricks_pci:
+        self.pc.add_simbricks_pci(url)
 
     self.pc.com_1.device = Terminal(port = options.termport, outfile =
             'stdoutput')
@@ -236,9 +286,9 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False, no
     return self
 
 def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
-                       noSimbricks=False, cmdline=None):
+                       cmdline=None):
     # Build up the x86 system and then specialize it for Linux
-    self = makeX86System(mem_mode, numCPUs, mdesc, X86FsLinux(), Ruby, noSimbricks)
+    self = makeX86System(mem_mode, numCPUs, mdesc, X86FsLinux(), Ruby)
 
     # We assume below that there's at least 1MB of memory. We'll require 2
     # just to avoid corner cases.
@@ -297,13 +347,9 @@ def cmd_line_template():
 
 def build_system(np):
     cmdline = cmd_line_template()
-    
-    if options.no_simbricks:
-        nosimbricks = True
-    else:
-        nosimbricks = False
+
     sys = makeLinuxX86System(test_mem_mode, np, bm[0], options.ruby,
-                                  nosimbricks, cmdline=cmdline)
+                             cmdline=cmdline)
 
     # Set the cache line size for the entire system
     sys.cache_line_size = options.cacheline_size
@@ -418,26 +464,8 @@ Options.addFSOptions(parser)
 
 parser.add_option("--termport", action="store", type="int",
         default="3456", help="port for terminal to listen on")
-parser.add_option("--simbricks-pci", action="store", type="string",
-        default="/tmp/simbricks-pci", help="Simbricks PCI Unix socket")
-parser.add_option("--simbricks-shm", action="store", type="string",
-        default="/dev/shm/dummy_nic_shm", help="Simbricks shared memory region")
-parser.add_option("--simbricks-sync", action="store_true",
-        help="Synchronize with simbricks pci device")
-parser.add_option("--simbricks-sync_mode", action="store", type="int",
-        default=0, help="Synchronization mode: 0 - Simbricks, 1 - Barrier")
-parser.add_option("--no-simbricks", action="store_true",
-        help="run standalone gem5 without simbricks")
-
-parser.add_option("--simbricks-pci-lat", action="store", type="int",
-        default=500, help="Simbricks PCI latency in ns")
-parser.add_option("--simbricks-sync-int", action="store", type="int",
-        default=100, help="Simbricks sync interval in ns")
-parser.add_option("--simbricks-poll-int", action="store", type="int",
-        default=100000, help="Simbricks poll interval in ns")
-
-parser.add_option("--simbricks-type", action="store", type="string",
-        default="corundum", help="Device type (corundum/i40e)")
+parser.add_option("--simbricks-pci", action="append", type="string",
+        default=[], help="Simbricks PCI URLs to connect to")
 
 (options, args) = parser.parse_args()
 
