@@ -165,3 +165,9 @@ Adapter::startup()
 
 } // namespace ethernet
 } // namespace simbricks
+
+simbricks::ethernet::Adapter *
+SimBricksEthernetParams::create()
+{
+    return new simbricks::ethernet::Adapter(this);
+}
