@@ -48,8 +48,11 @@ if env['USE_SIMBRICKS']:
     Source('base.cc')
     Source('init_manager.cc')
     Source('pci.cc')
+    Source('ethernet.cc')
 
 DebugFlag('SimBricks')
 DebugFlag('SimBricksSync')
 DebugFlag('SimBricksPci')
-CompoundFlag('SimBricksAll', [ 'SimBricks', 'SimBricksSync', 'SimBricksPci'])
+DebugFlag('SimBricksEthernet')
+CompoundFlag('SimBricksAll', [ 'SimBricks', 'SimBricksSync', 'SimBricksPci',
+    'SimBricksEthernet'])

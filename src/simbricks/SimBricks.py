@@ -41,6 +41,8 @@ from m5.SimObject import SimObject
 from m5.params import *
 from m5.proxy import *
 from m5.objects.PciDevice import PciDevice
+from m5.objects.Ethernet import EtherInt
+
 
 class SimBricksPci(PciDevice):
     type = 'SimBricksPci'
@@ -62,3 +64,19 @@ class SimBricksPci(PciDevice):
     # defaults to avoid gem5 erroring out
     VendorID = 0x0001
     DeviceID = 0x0001
+
+
+class SimBricksEthernet(SimObject):
+    type = 'SimBricksEthernet'
+    cxx_class = 'simbricks::ethernet::Adapter'
+    cxx_header = "simbricks/ethernet.hh"
+
+    int0 = EtherInt("interface 0")
+
+    listen = Param.Bool(False, "Open listening instead of connecting")
+    uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("Shared memory path")
+    sync = Param.Bool(False, "Synchronize over Ethernet")
+    poll_interval = Param.Latency('1us', "poll interval size (unsync only)")
+    sync_tx_interval = Param.Latency('500ns', "interval between syncs")
+    eth_latency = Param.Latency('500ns', "Ethernet latency")
