@@ -180,6 +180,21 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
             self._devid_next += 1
             self._num_simbricks += 1
 
+        def add_simbricks_e1000_eth(self, url):
+            print('adding simbricks eth:', url)
+            params = parseSimBricksUrl(url)
+
+            ethif = SimBricksEthernet(*params)
+            setattr(self, 'simbricks_ethif_' + str(self._num_simbricks), ethif)
+
+            dev = IGbE_e1000(pci_bus=0, pci_dev=self._devid_next, pci_func=0,
+                             InterruptLine=15, InterruptPin=1)
+            setattr(self, 'simbricks_' + str(self._num_simbricks), dev)
+            ethif.int0 = dev.interface
+
+            self._devid_next += 1
+            self._num_simbricks += 1
+
         def attachIO(self, bus, dma_ports = []):
             super(SimBricksPc, self).attachIO(bus, dma_ports)
             print('connecting', self._num_simbricks)
@@ -192,9 +207,12 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
     # Platform
     self.pc = SimBricksPc()
 
-   # Add simbricks pci adapters as needed
+    # Add simbricks pci adapters as needed
     for url in options.simbricks_pci:
         self.pc.add_simbricks_pci(url)
+
+    for url in options.simbricks_eth_e1000:
+        self.pc.add_simbricks_e1000_eth(url)
 
     self.pc.com_1.device = Terminal(port = options.termport, outfile =
             'stdoutput')
@@ -466,6 +484,8 @@ parser.add_option("--termport", action="store", type="int",
         default="3456", help="port for terminal to listen on")
 parser.add_option("--simbricks-pci", action="append", type="string",
         default=[], help="Simbricks PCI URLs to connect to")
+parser.add_option("--simbricks-eth-e1000", action="append", type="string",
+        default=[], help="Simbricks Ethernet URLs to connect e1000 adapters to")
 
 (options, args) = parser.parse_args()
 
