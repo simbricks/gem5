@@ -166,14 +166,14 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
         def __init__(self):
             super(SimBricksPc, self).__init__()
             self._num_simbricks = 0
-            self._devid_next = 2
+            self._devid_next = 0
 
         def add_simbricks_pci(self, url):
             print('adding simbricks pci:', url)
             params = parseSimBricksUrl(url)
             dev = SimBricksPci(
                          pci_bus=0, pci_dev=self._devid_next, pci_func=0,
-                         InterruptLine=15, InterruptPin=1,
+                         InterruptLine=(16 + self._devid_next), InterruptPin=1,
                          LegacyIOBase = 0x8000000000000000,
                          **params)
             setattr(self, 'simbricks_' + str(self._num_simbricks), dev)
@@ -184,11 +184,11 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
             print('adding simbricks eth:', url)
             params = parseSimBricksUrl(url)
 
-            ethif = SimBricksEthernet(*params)
+            ethif = SimBricksEthernet(**params)
             setattr(self, 'simbricks_ethif_' + str(self._num_simbricks), ethif)
 
             dev = IGbE_e1000(pci_bus=0, pci_dev=self._devid_next, pci_func=0,
-                             InterruptLine=15, InterruptPin=1)
+                             InterruptLine=(16+self._devid_next), InterruptPin=1)
             setattr(self, 'simbricks_' + str(self._num_simbricks), dev)
             ethif.int0 = dev.interface
 
@@ -257,24 +257,16 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
     connect_busses = X86IntelMPBusHierarchy(bus_id=1,
             subtractive_decode=True, parent_bus=0)
     ext_entries.append(connect_busses)
-    pci_dev2_inta = X86IntelMPIOIntAssignment(
-            interrupt_type = 'INT',
-            polarity = 'ConformPolarity',
-            trigger = 'ConformTrigger',
-            source_bus_id = 0,
-            source_bus_irq = 0 + (2 << 2),
-            dest_io_apic_id = io_apic.id,
-            dest_io_apic_intin = 17)
-    base_entries.append(pci_dev2_inta)
-    pci_dev4_inta = X86IntelMPIOIntAssignment(
-            interrupt_type = 'INT',
-            polarity = 'ConformPolarity',
-            trigger = 'ConformTrigger',
-            source_bus_id = 0,
-            source_bus_irq = 0 + (4 << 2),
-            dest_io_apic_id = io_apic.id,
-            dest_io_apic_intin = 16)
-    base_entries.append(pci_dev4_inta)
+    for dev in range(0,4):
+        pci_dev_inta = X86IntelMPIOIntAssignment(
+                interrupt_type = 'INT',
+                polarity = 'ConformPolarity',
+                trigger = 'ConformTrigger',
+                source_bus_id = 0,
+                source_bus_irq = 0 + (dev << 2),
+                dest_io_apic_id = io_apic.id,
+                dest_io_apic_intin = 16 + dev)
+        base_entries.append(pci_dev_inta)
     def assignISAInt(irq, apicPin):
         assign_8259_to_apic = X86IntelMPIOIntAssignment(
                 interrupt_type = 'ExtInt',
