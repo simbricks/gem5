@@ -348,6 +348,9 @@ IGbE::read(PacketPtr pkt)
             pkt->setLE<uint32_t>(0);
     };
 
+    DPRINTF(Ethernet, "Read device register %#X  res=%#X\n", daddr,
+        pkt->getLE<uint32_t>());
+
     pkt->makeAtomicResponse();
     return pioDelay;
 }
@@ -2426,6 +2429,8 @@ IGbE::txWire()
         txPackets++;
 
         txFifo.pop();
+    } else {
+        DPRINTF(EthernetSM, "Transmitting failed\n");
     }
 }
 
