@@ -40,7 +40,7 @@ Adapter::Adapter(const Params *p)
     sync(p->sync),
     reTxEvent([this]{ retransmit(); }, "SimbricksEthernet retransmit")
 {
-    DPRINTF(SimBricksEthernet, "simbricks-ethernet: device constructed\n");
+    DPRINTF(SimBricksEthernet, "device constructed\n");
 
     interface = new Interface(name() + ".int0", this);
 
@@ -128,9 +128,11 @@ Adapter::handleInMsg(volatile union SimbricksProtoNetMsg *msg)
 void
 Adapter::retransmit()
 {
+    DPRINTF(SimBricksEthernet, "retransmit event\n");
     if (packetBuffer.empty())
         return;
 
+    DPRINTF(SimBricksEthernet, "attempting retransmit\n");
     EthPacketPtr packet = packetBuffer.front();
     if (interface->sendPacket(packet)) {
         DPRINTF(SimBricksEthernet, "retransmit\n");
@@ -145,6 +147,7 @@ Adapter::retransmit()
 bool
 Adapter::recvPacket(EthPacketPtr packet)
 {
+    DPRINTF(SimBricksEthernet, "sending out a packet\n");
     volatile union SimbricksProtoNetMsg *msg_to = adapter.outAlloc();
 
     volatile struct SimbricksProtoNetMsgPacket *pkt_to = &msg_to->packet;
