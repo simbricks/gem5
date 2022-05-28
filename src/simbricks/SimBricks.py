@@ -77,6 +77,6 @@ class SimBricksEthernet(SimObject):
     uxsocket_path = Param.String("unix socket path")
     shm_path = Param.String("Shared memory path")
     sync = Param.Bool(False, "Synchronize over Ethernet")
-    poll_interval = Param.Latency('1us', "poll interval size (unsync only)")
+    poll_interval = Param.Latency('100us', "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency('500ns', "interval between syncs")
     link_latency = Param.Latency('500ns', "Ethernet latency")
