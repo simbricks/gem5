@@ -33,3 +33,7 @@ configs/dram/lowp_sweep.cfg
 ready
 configs/tutorial
 my_script
+util/simbricks/out/*
+util/dist/test/*
+!util/dist/test/run_x86.sh
+!util/dist/test/exp_run.sh
