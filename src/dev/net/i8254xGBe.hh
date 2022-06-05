@@ -50,6 +50,7 @@
 #include "sim/eventq.hh"
 
 class IGbEInt;
+class dma_context;
 class IGbE;
 class IGbEPioPort : public QueuedSlavePort
 {
@@ -564,6 +565,13 @@ class IGbE : public EtherDevice
     DrainState drain() override;
     void drainResume() override;
 
+    void dmaWrite(Addr addr, int size, Event *event, uint8_t *data,
+                Tick delay = 0);
+    void dmaRead(Addr addr, int size, Event *event, uint8_t *data,
+                Tick delay = 0);
+
+    void issueDma(dma_context *ctx);
+    void complDma(dma_context *ctx);
 };
 
 class IGbEInt : public EtherInt

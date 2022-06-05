@@ -2620,6 +2620,97 @@ IGbEParams::create()
     return new IGbE(this);
 }
 
+
+class dma_context {
+  public:
+    EventFunctionWrapper issueWrap;
+    EventFunctionWrapper complWrap;
+    IGbE *dev;
+    bool write;
+    Addr addr;
+    int size;
+    Event *event;
+    uint8_t *data;
+    Tick del;
+
+    void issueDma()
+    {
+        dev->issueDma(this);
+    }
+
+    void complDma()
+    {
+        dev->complDma(this);
+        delete this;
+    }
+
+    dma_context(bool write_) :
+        issueWrap([this]{issueDma();}, "dma issuewrap", false, (write_ ?  1 : 2)),
+        complWrap([this]{complDma();}, "dma compl", false, (write_ ?  3 : 4)),
+        write(write_)
+    {
+    }
+};
+
+void
+IGbE::dmaWrite(Addr addr, int size, Event *event, uint8_t *data,
+            Tick delay)
+{
+    DPRINTF(Ethernet, "Our DMA Write (delay=%lx)\n", delay);
+
+    dma_context *ctx = new dma_context(true);
+    ctx->dev = this;
+    ctx->addr = addr;
+    ctx->size = size;
+    ctx->event = NULL;
+    ctx->data = new uint8_t[size];
+    memcpy(ctx->data, data, size);
+    schedule(ctx->issueWrap, curTick() + pciAsynchrony + delay);
+    schedule(event, curTick() + delay);
+}
+
+void
+IGbE::dmaRead(Addr addr, int size, Event *event, uint8_t *data,
+            Tick delay)
+{
+    DPRINTF(Ethernet, "Our DMA read (delay=%lx)\n", delay);
+
+    // Hack make it look like event is scheduled:
+    schedule(event, curTick() + SimClock::Int::s);
+
+    dma_context *ctx = new dma_context(false);
+    ctx->dev = this;
+    ctx->addr = addr;
+    ctx->size = size;
+    ctx->event = event;
+    ctx->data = data;
+    schedule(ctx->issueWrap, curTick() + pciAsynchrony + delay);
+}
+
+void
+IGbE::issueDma(dma_context *ctx)
+{
+    if (ctx->write) {
+        DPRINTF(Ethernet, "Issuing DMA Write\n");
+        DmaDevice::dmaWrite(ctx->addr, ctx->size, &ctx->complWrap,
+            ctx->data, 0);
+    } else {
+        DPRINTF(Ethernet, "Issuing DMA Read\n");
+        DmaDevice::dmaRead(ctx->addr, ctx->size, &ctx->complWrap,
+            ctx->data, 0);
+    }
+}
+
+void
+IGbE::complDma(dma_context *ctx)
+{
+    if (ctx->write) {
+        delete[] ctx->data;
+    } else {
+        reschedule(ctx->event, curTick() + pciAsynchrony);
+    }
+}
+
 /******************************************************************************/
 
 IGbEPioPort::IGbEPioPort(const std::string &_name,
