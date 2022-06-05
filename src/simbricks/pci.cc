@@ -618,7 +618,6 @@ TimingPioPort::TimingPioPort(const std::string &_name,
 
 AddrRangeList TimingPioPort::getAddrRanges() const
 {
-    warn("TimingPioPort::getAddrRanges()");
     return dev.getAddrRanges();
 }
 
