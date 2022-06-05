@@ -37,8 +37,7 @@ Adapter::Adapter(const Params *p)
     base::GenericBaseAdapter<SimbricksProtoNetMsg, SimbricksProtoNetMsg>::
         Interface(*this),
     adapter(*this, *this, p->sync),
-    sync(p->sync),
-    reTxEvent([this]{ retransmit(); }, "SimbricksEthernet retransmit")
+    sync(p->sync)
 {
     DPRINTF(SimBricksEthernet, "device constructed\n");
 
@@ -113,35 +112,8 @@ Adapter::handleInMsg(volatile union SimbricksProtoNetMsg *msg)
     memcpy(packet->data, (const void *) pkt->data, len);
 
     DPRINTF(SimBricksEthernet, "real->sim len=%d\n", len);
-    if (!packetBuffer.empty() || !interface->sendPacket(packet)){
-        DPRINTF(SimBricksEthernet, "bus busy...buffer for retransmission\n");
-
-        packetBuffer.push(packet);
-        if (!reTxEvent.scheduled()){
-            schedule(reTxEvent, curTick() + 1000);
-        }
-    }
-    
+    interface->sendPacket(packet);
     adapter.inDone(msg);
-}
-
-void
-Adapter::retransmit()
-{
-    DPRINTF(SimBricksEthernet, "retransmit event\n");
-    if (packetBuffer.empty())
-        return;
-
-    DPRINTF(SimBricksEthernet, "attempting retransmit\n");
-    EthPacketPtr packet = packetBuffer.front();
-    if (interface->sendPacket(packet)) {
-        DPRINTF(SimBricksEthernet, "retransmit\n");
-        packetBuffer.front() = NULL;
-        packetBuffer.pop();
-    }
-
-    if (!packetBuffer.empty() && !reTxEvent.scheduled())
-        schedule(reTxEvent, curTick() + 1000);
 }
 
 bool

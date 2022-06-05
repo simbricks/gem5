@@ -53,12 +53,7 @@ protected:
     virtual void initIfParams(SimbricksBaseIfParams &p) override;
     virtual void handleInMsg(volatile SimbricksProtoNetMsg *msg) override;
 
-
-    std::queue<EthPacketPtr> packetBuffer;
-    EventFunctionWrapper reTxEvent;
-
     bool recvPacket(EthPacketPtr packet);
-    void retransmit();
 
     class Interface : public EtherInt {
       private:
