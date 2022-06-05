@@ -1896,14 +1896,14 @@ IGbE::TxDescCache::pktComplete()
         tsoPrevSeq = tsoUsedLen;
     }
 
-    if (DTRACE(EthernetDesc)) {
+    /*if (DTRACE(EthernetDesc)) {
         IpPtr ip(pktPtr);
         if (ip)
             DPRINTF(EthernetDesc, "Proccesing Ip packet with Id=%d\n",
                     ip->id());
         else
             DPRINTF(EthernetSM, "Proccesing Non-Ip packet\n");
-    }
+    }*/
 
     // Checksums are only ofloaded for new descriptor types
     if (TxdOp::isData(desc) && (TxdOp::ixsm(desc) || TxdOp::txsm(desc))) {
