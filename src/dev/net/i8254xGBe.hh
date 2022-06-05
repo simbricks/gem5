@@ -50,12 +50,34 @@
 #include "sim/eventq.hh"
 
 class IGbEInt;
+class IGbE;
+class IGbEPioPort : public QueuedSlavePort
+{
+  protected:
+    IGbE &dev;
+    RespPacketQueue respQueue;
+    std::unique_ptr<Packet> pendingDelete;
+
+    virtual void recvFunctional(PacketPtr pkt);
+    virtual Tick recvAtomic(PacketPtr pkt);
+    virtual bool recvTimingReq(PacketPtr pkt);
+
+  public:
+    IGbEPioPort(const std::string &_name,
+                  IGbE &_dev,
+                  PortID _id = InvalidPortID);
+    virtual ~IGbEPioPort() {}
+    virtual AddrRangeList getAddrRanges() const;
+};
 
 class IGbE : public EtherDevice
 {
+  friend class IGbEPioPort;
   private:
     IGbEInt *etherInt;
     CPA *cpa;
+
+    IGbEPioPort overridePort;
 
     // device registers
     iGbReg::Regs regs;
@@ -521,6 +543,7 @@ class IGbE : public EtherDevice
     IGbE(const Params *params);
     ~IGbE();
     void init() override;
+    virtual SlavePort &pciPioPort() override;
 
     Port &getPort(const std::string &if_name,
                   PortID idx=InvalidPortID) override;

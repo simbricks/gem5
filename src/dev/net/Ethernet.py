@@ -179,6 +179,7 @@ class IGbE_e1000(IGbE):
     DeviceID = 0x1075
     phy_pid = 0x02A8
     phy_epid = 0x0380
+    pio_latency = Param.Latency('0ns', "Programmed IO latency")
 
 class IGbE_igb(IGbE):
     # Newer Intel 8257x based gigabit ethernet adapter

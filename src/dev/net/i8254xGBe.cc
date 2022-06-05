@@ -57,6 +57,7 @@ using namespace Net;
 
 IGbE::IGbE(const Params *p)
     : EtherDevice(p), etherInt(NULL), cpa(NULL),
+      overridePort(name() + ".pio", *this),
       rxFifo(p->rx_fifo_size), txFifo(p->tx_fifo_size), inTick(false),
       rxTick(false), txTick(false), txFifoTick(false), rxDmaPacket(false),
       pktOffset(0), fetchDelay(p->fetch_delay), wbDelay(p->wb_delay),
@@ -133,11 +134,24 @@ IGbE::~IGbE()
     delete etherInt;
 }
 
+SlavePort
+&IGbE::pciPioPort()
+{
+    return overridePort;
+}
+
 void
 IGbE::init()
 {
     cpa = CPA::cpa();
-    PciDevice::init();
+
+    /* not calling parent init on purpose, as that will cause problems because
+     * PIO port is not connected */
+    if (!overridePort.isConnected())
+        panic("Pio port (override) of %s not connected!", name());
+    if (!dmaPort.isConnected())
+        panic("DMA port (override) of %s not connected!", name());
+    overridePort.sendRangeChange();
 }
 
 Port &
@@ -145,6 +159,8 @@ IGbE::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "interface")
         return *etherInt;
+    if (if_name == "pio")
+        return overridePort;
     return EtherDevice::getPort(if_name, idx);
 }
 
@@ -2602,4 +2618,97 @@ IGbE *
 IGbEParams::create()
 {
     return new IGbE(this);
+}
+
+/******************************************************************************/
+
+IGbEPioPort::IGbEPioPort(const std::string &_name,
+              IGbE &_dev,
+              PortID _id)
+    : QueuedSlavePort(_name, &_dev, respQueue, _id), dev(_dev),
+    respQueue(_dev, *this)
+{
+}
+
+AddrRangeList IGbEPioPort::getAddrRanges() const
+{
+    return dev.getAddrRanges();
+}
+
+
+void
+IGbEPioPort::recvFunctional(PacketPtr pkt)
+{
+    if (pkt->cacheResponding())
+        panic("IGbEPioPort: should not see cache responding");
+
+
+    if (respQueue.trySatisfyFunctional(pkt))
+        return;
+
+    if (pkt->isRead())
+        dev.read(pkt);
+    else
+        dev.write(pkt);
+
+    assert(pkt->isResponse() || pkt->isError());
+}
+
+Tick
+IGbEPioPort::recvAtomic(PacketPtr pkt)
+{
+    if (pkt->cacheResponding())
+        panic("IGbEPioPort: should not see cache responding");
+
+    // Technically the packet only reaches us after the header delay,
+    // and typically we also need to deserialise any payload.
+    Tick receive_delay = pkt->headerDelay + pkt->payloadDelay;
+    pkt->headerDelay = pkt->payloadDelay = 0;
+
+    const Tick delay =
+        pkt->isRead() ? dev.read(pkt) : dev.write(pkt);
+    assert(pkt->isResponse() || pkt->isError());
+    return delay + receive_delay;
+}
+
+bool
+IGbEPioPort::recvTimingReq(PacketPtr pkt)
+{
+    DPRINTF(Ethernet, "Received timing PIO\n");
+    if (pkt->cacheResponding())
+        panic("IGbEPioPort: should not see cache responding");
+
+    if (pkt->isWrite()) {
+        PacketPtr newpkt = new Packet(pkt, false, true);
+        newpkt->setData(pkt->getConstPtr<uint8_t>());
+
+        if (pkt->needsResponse()) {
+            pkt->makeTimingResponse();
+            schedTimingResp(pkt, curTick() + 1);
+        } else {
+            pendingDelete.reset(pkt);
+        }
+
+        pkt = newpkt;
+    }
+
+    EventFunctionWrapper *efw = new EventFunctionWrapper([this, pkt]{
+        if (pkt->isRead()) {
+            Tick delay = dev.read(pkt);
+            DPRINTF(Ethernet, "Completed read = %lld\n", delay);
+            EventFunctionWrapper *efw2 = new EventFunctionWrapper([this, pkt]{
+                DPRINTF(Ethernet, "Issuing read response\n");
+                schedTimingResp(pkt, curTick());
+            }, "pio rx wrap 2", true);
+            dev.schedule(efw2, curTick() + dev.pciAsynchrony);
+        } else if (pkt->isWrite()) {
+            dev.write(pkt);
+            delete pkt;
+        } else {
+            panic("TimingPioPort: unknown packet type");
+        }
+    }, "pio rx wrap", true, -1);
+    dev.schedule(efw, curTick() + dev.pciAsynchrony);
+
+    return true;
 }
