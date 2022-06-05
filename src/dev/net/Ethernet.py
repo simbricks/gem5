@@ -148,7 +148,7 @@ class IGbE(EtherDevice):
     VendorID = 0x8086
     SubsystemID = 0x1008
     SubsystemVendorID = 0x8086
-    Status = 0x0000
+    Status = 0x0290
     SubClassCode = 0x00
     ClassCode = 0x02
     ProgIF = 0x00

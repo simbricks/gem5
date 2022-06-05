@@ -58,8 +58,10 @@ class SimBricksPci(PciDevice):
     link_latency = Param.Latency('500ns', "PCI latency")
 
     Status = 0x0290
-    MaximumLatency = 0x34
-    MinimumGrant = 0xb0
+    MaximumLatency = 0x00
+    MinimumGrant = 0xff
+    SubsystemID = 0x1008
+    SubsystemVendorID = 0x8086
 
     # defaults to avoid gem5 erroring out
     VendorID = 0x0001
