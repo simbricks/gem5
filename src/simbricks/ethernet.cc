@@ -57,14 +57,16 @@ Adapter::~Adapter()
 size_t
 Adapter::introOutPrepare(void *data, size_t maxlen)
 {
-    // this is a bit ugly, but in c++ an empty struct has size 1 byte
-    assert(sizeof(SimbricksProtoNetIntro) == 1);
-    return 0;
+    size_t introlen = sizeof(struct SimbricksProtoNetIntro);
+    assert(introlen <= maxlen);
+    memset(data, 0, introlen);
+    return introlen;
 }
 
 void
 Adapter::introInReceived(const void *data, size_t len)
 {
+    assert(len == sizeof(struct SimbricksProtoNetIntro));
 }
 
 void
