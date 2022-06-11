@@ -41,7 +41,7 @@
 # dist gem5 bootscript util/dist/test/simple_bootscript.rcS that will
 # run the linux ping command to check if we can see the peer system
 # connected via the simulated Ethernet link.
-
+set -x
 GEM5_DIR=$(pwd)/../..
 REPO_DIR=$GEM5_DIR/../../..
 
@@ -49,16 +49,17 @@ IMG=$GEM5_DIR/../../../images/output-base/base.raw
 VMLINUX=$GEM5_DIR/../../../images/vmlinux
 
 FS_CONFIG=$GEM5_DIR/configs/simbricks/simbricks.py
-GEM5_EXE=$GEM5_DIR/build/X86/gem5.fast
+GEM5_EXE=$GEM5_DIR/build/X86/gem5.opt
 SWITCH_EXE=$REPO_DIR/sims/net/switch/net_switch
 
 X86_ARGS="--cpu-clock=3GHz --cpu-type=TimingSimpleCPU --num-cpus=1 --caches --l2cache --l3cache --l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB --l1d_assoc=8 --l1i_assoc=8 --l2_assoc=4 --l3_assoc=16 --cacheline_size=64 --ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 "
 #X86_ARGS="--cpu-clock=3GHz --cpu-type=X86KvmCPU --num-cpus=1 --caches --l2cache --l3cache --l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB --l1d_assoc=8 --l1i_assoc=8 --l2_assoc=4 --l3_assoc=16 --cacheline_size=64 --ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 "
 
 NNODES=$1
-LINK_DELAY=500 # 500 ns
-SYNC_DELAY=500
+LINK_DELAY="500ns" # 500 ns
+SYNC_DELAY="500ns"
 SIMBRICKS_ARGS=""
+#DEBUG_FLAGS=" --debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet "
 
 ALL_PIDS=""
 WAIT_PIDS=""
@@ -101,7 +102,7 @@ run_switch()
         ((iface++))
     done
     $SWITCH_EXE -S 500 -E 500 \
-    $args > $RUN_DIR/log.switch &
+    $args > $RUN_DIR/log.switch 2>&1 &
 
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
@@ -197,7 +198,7 @@ do
     ((r++))
 done
 
-sleep 15
+sleep 5
 run_switch $1
 
 wait $child_pid
