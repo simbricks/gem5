@@ -57,9 +57,10 @@ Device::~Device()
 size_t
 Device::introOutPrepare(void *data, size_t maxlen)
 {
-    // this is a bit ugly, but in c++ an empty struct has size 1 byte
-    assert(sizeof(SimbricksProtoPcieHostIntro) == 1);
-    return 0;
+    size_t introlen = sizeof(struct SimbricksProtoPcieHostIntro);
+    assert(introlen <= maxlen);
+    memset(data, 0, introlen);
+    return introlen;
 }
 
 void
