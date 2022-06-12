@@ -213,7 +213,7 @@ done
 abort_func ()
 {
     echo
-    echo "KILLED $(date)"
+    echo "KILLED $(date +%s)"
     # Try to Kill the server first. That should trigger an exit for all connected
     # gem5 processes.
     [ "x$SW_PID" != "x" ] && kill $SW_PID 2>/dev/null
@@ -327,7 +327,7 @@ IFS=' ' read -ra ADDR <<< "$LINE"
 SW_PORT=${ADDR[5]}
 
 # Now launch all the gem5 processes with ssh.
-echo "START $(date)"
+echo "START $(date +%s)"
 n=0
 for ((i=0; i < ${#HOSTS[@]}; i++))
 do
@@ -376,7 +376,7 @@ kill $WATCHDOG_PID 2>/dev/null
 
 if ((NFAIL==0))
 then
-    echo "EXIT $(date)"
+    echo "EXIT $(date +%s)"
 else
-    echo "ABORT $(date)"
+    echo "ABORT $(date +%s)"
 fi

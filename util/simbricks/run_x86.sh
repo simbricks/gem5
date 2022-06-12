@@ -173,13 +173,13 @@ cleanup() {
     for p in $ALL_PIDS ; do
         kill -KILL $p &>/dev/null
     done
-    date
+    echo "EXIT $(date +%s)"
 }
 
 sighandler(){
     echo "caught Interrup, aborting..."
     cleanup
-    date
+    echo "KILLED $(date +%s)"
     exit 1
 }
 
@@ -188,7 +188,7 @@ rm -rf $RUN_DIR
 sleep 1
 make_script $1
 sleep 1
-date
+echo "START $(date +%s)"
 run_gem5 0 $1
 child_pid=$! 
 r=1
