@@ -28,16 +28,16 @@ index f1b1d1e82..be757cab8 100644
      mshrs = 20
      tgts_per_mshr = 12
      write_buffers = 8
-diff --git a/src/arch/x86/X86TLB.py b/src/arch/x86/X86TLB.py
-index 8cfb6358a..bb35526cf 100644
---- a/src/arch/x86/X86TLB.py
-+++ b/src/arch/x86/X86TLB.py
-@@ -52,7 +52,7 @@ class X86TLB(BaseTLB):
-     type = 'X86TLB'
-     cxx_class = 'X86ISA::TLB'
-     cxx_header = 'arch/x86/tlb.hh'
--    size = Param.Unsigned(1024, "TLB size")
-+    size = Param.Unsigned(64, "TLB size")
-     system = Param.System(Parent.any, "system object")
-     walker = Param.X86PagetableWalker(\
-             X86PagetableWalker(), "page table walker")
+diff --git a/configs/simbricks/simbricks.py b/configs/simbricks/simbricks.py
+index 58890ff3a..6478343b6 100644
+--- a/configs/simbricks/simbricks.py
++++ b/configs/simbricks/simbricks.py
+@@ -396,6 +396,8 @@ def build_system(np):
+     # For now, assign all the CPUs to the same clock domain
+     sys.cpu = [TestCPUClass(clk_domain=sys.cpu_clk_domain, cpu_id=i)
+                     for i in range(np)]
++    sys.cpu[0].dtb.size = 64
++    sys.cpu[0].itb.size = 64
+ 
+     if ObjectList.is_kvm_cpu(TestCPUClass) or \
+         ObjectList.is_kvm_cpu(FutureClass):
