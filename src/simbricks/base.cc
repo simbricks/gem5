@@ -35,21 +35,25 @@ Adapter::Adapter(SimObject &parent, bool sync_)
       sync(sync_), isListen(false), pollInterval(500000),
       inEvent([this]{ processInEvent(); }, name() + "SimBricksIn"),
       outSyncEvent([this]{ processOutSyncEvent(); }, name() + "SimBricksSync"),
-      pool(nullptr)
+      pool(nullptr), callbackExit(this)
 {
 }
 
 Adapter::~Adapter()
 {
-    if (pool) {
-        SimbricksBaseIfSHMPoolUnlink(pool);
-        SimbricksBaseIfSHMPoolUnmap(pool);
-    }
+}
 
+void
+Adapter::close()
+{
     SimbricksBaseIfClose(&baseIf);
     if (isListen)
         SimbricksBaseIfUnlink(&baseIf);
 
+    if (pool) {
+        SimbricksBaseIfSHMPoolUnlink(pool);
+        SimbricksBaseIfSHMPoolUnmap(pool);
+    }
 }
 
 void
@@ -98,6 +102,8 @@ Adapter::commonInit(const std::string &sock_path)
 
     if (SimbricksBaseIfInit(&baseIf, &params))
         panic("base init failed");
+
+    registerExitCallback(&callbackExit);
 }
 
 size_t

@@ -27,6 +27,7 @@
 
 #include "sim/eventq.hh"
 #include "sim/sim_object.hh"
+#include "base/callback.hh"
 
 namespace simbricks {
 extern "C" {
@@ -49,12 +50,12 @@ class Adapter : public EventManager {
     struct SimbricksBaseIfSHMPool *pool;
     struct SimbricksBaseIfParams params;
 
-
     void processInEvent();
     void processOutSyncEvent();
 
     void commonInit(const std::string &sock_path);
   protected:
+    void close();
     virtual size_t introOutPrepare(void *data, size_t maxlen);
     virtual void introInReceived(const void *data, size_t len);
     virtual void handleInMsg(volatile union SimbricksProtoBaseMsg *msg);
@@ -94,6 +95,9 @@ class Adapter : public EventManager {
     void outSend(volatile union SimbricksProtoBaseMsg *msg, uint8_t ty) {
         SimbricksBaseIfOutSend(&baseIf, msg, ty);
     }
+
+  private:
+    MakeCallback<Adapter, &Adapter::close> callbackExit;
 };
 
 template <typename TMI, typename TMO>
