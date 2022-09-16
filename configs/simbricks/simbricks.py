@@ -166,6 +166,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
         def __init__(self):
             super(SimBricksPc, self).__init__()
             self._num_simbricks = 0
+            self._num_simbricks_mem = 0
             self._devid_next = 0
 
         def add_simbricks_pci(self, url):
@@ -195,13 +196,29 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
             self._devid_next += 1
             self._num_simbricks += 1
 
+        def add_simbricks_mem(self, arg):
+            [addr, size, as_id, url] = arg.split('@')
+            print(f'adding simbricks mem: size={size} addr={addr} as={as_id} '
+                  f'url={url}')
+            params = parseSimBricksUrl(url)
+
+            mem = SimBricksMem(**params)
+            setattr(self, 'simbricks_mem_' + str(self._num_simbricks_mem), mem)
+            self._num_simbricks_mem += 1
+
         def attachIO(self, bus, dma_ports = []):
             super(SimBricksPc, self).attachIO(bus, dma_ports)
-            print('connecting', self._num_simbricks)
+            print(f'connecting {self._num_simbricks} pci & eth simbricks '
+                   'adapters')
             for i in range(0, self._num_simbricks):
                 dev = getattr(self, 'simbricks_' + str(i))
                 dev.pio = bus.master
                 dev.dma = bus.slave
+            print(f'connecting {self._num_simbricks_mem} mem simbricks '
+                    'adapters')
+            for i in range(0, self._num_simbricks_mem):
+                mem = getattr(self, 'simbricks_mem_' + str(i))
+                mem.port = bus.master
 
 
     # Platform
@@ -213,6 +230,9 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
 
     for url in options.simbricks_eth_e1000:
         self.pc.add_simbricks_e1000_eth(url)
+
+    for url in options.simbricks_mem:
+        self.pc.add_simbricks_mem(url)
 
     self.pc.com_1.device = Terminal(port = options.termport, outfile =
             'stdoutput')
@@ -478,6 +498,8 @@ parser.add_option("--simbricks-pci", action="append", type="string",
         default=[], help="Simbricks PCI URLs to connect to")
 parser.add_option("--simbricks-eth-e1000", action="append", type="string",
         default=[], help="Simbricks Ethernet URLs to connect e1000 adapters to")
+parser.add_option("--simbricks-mem", action="append", type="string",
+        default=[], help="Simbricks Mem blocks to add: SIZE@ADDR@ASID@URL")
 
 (options, args) = parser.parse_args()
 
