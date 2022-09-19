@@ -197,10 +197,13 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
             self._num_simbricks += 1
 
         def add_simbricks_mem(self, arg):
-            [addr, size, as_id, url] = arg.split('@')
+            [size, addr, as_id, url] = arg.split('@')
             print(f'adding simbricks mem: size={size} addr={addr} as={as_id} '
                   f'url={url}')
             params = parseSimBricksUrl(url)
+            params['size'] = size
+            params['base_address'] = addr
+            params['static_as_id'] = as_id
 
             mem = SimBricksMem(**params)
             setattr(self, 'simbricks_mem_' + str(self._num_simbricks_mem), mem)
