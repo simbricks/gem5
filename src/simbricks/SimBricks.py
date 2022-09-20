@@ -93,7 +93,7 @@ class SimBricksMem(SimObject):
 
     listen = Param.Bool(False, "Open listening instead of connecting")
     uxsocket_path = Param.String("unix socket path")
-    shm_path = Param.String("Shared memory path")
+    shm_path = Param.String(' ', "Shared memory path")
     sync = Param.Bool(False, "Synchronize over Ethernet")
     poll_interval = Param.Latency('100us', "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency('500ns', "interval between syncs")
