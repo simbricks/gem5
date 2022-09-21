@@ -128,7 +128,7 @@ def connectX86ClassicSystem(x86_sys, numCPUs):
                                            - 1)]
 
     # connect the io bus
-    x86_sys.pc.attachIO(x86_sys.iobus)
+    x86_sys.pc.attachIO(x86_sys.iobus, [], x86_sys.membus)
 
     x86_sys.system_port = x86_sys.membus.slave
 
@@ -209,7 +209,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
             setattr(self, 'simbricks_mem_' + str(self._num_simbricks_mem), mem)
             self._num_simbricks_mem += 1
 
-        def attachIO(self, bus, dma_ports = []):
+        def attachIO(self, bus, dma_ports = [], membus=None):
             super(SimBricksPc, self).attachIO(bus, dma_ports)
             print(f'connecting {self._num_simbricks} pci & eth simbricks '
                    'adapters')
@@ -221,7 +221,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False) :
                     'adapters')
             for i in range(0, self._num_simbricks_mem):
                 mem = getattr(self, 'simbricks_mem_' + str(i))
-                mem.port = bus.master
+                mem.port = membus.master
 
 
     # Platform
