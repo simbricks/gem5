@@ -365,6 +365,8 @@ def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
     if not cmdline:
         cmdline = 'earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 no_timer_check memory_corruption_check=0 random.trust_cpu=on init=/home/ubuntu/guestinit.sh'
     self.workload.command_line = fillInCmdline(mdesc, cmdline)
+    if options.command_line_append:
+        self.workload.command_line += ' ' + options.command_line_append
     return self
 
 def cmd_line_template():
@@ -503,6 +505,8 @@ parser.add_option("--simbricks-eth-e1000", action="append", type="string",
         default=[], help="Simbricks Ethernet URLs to connect e1000 adapters to")
 parser.add_option("--simbricks-mem", action="append", type="string",
         default=[], help="Simbricks Mem blocks to add: SIZE@ADDR@ASID@URL")
+parser.add_option("--command-line-append", action="store", type="string",
+        default="", help="append to kernel command line")
 
 (options, args) = parser.parse_args()
 
