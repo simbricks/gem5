@@ -70,6 +70,9 @@ typedef uint64_t PacketId;
 class MemCmd
 {
     friend class Packet;
+    friend class simbricks::SplitCPUAdapter;
+    //friend class SplitMEMAdapter;
+
 
   public:
     /**
@@ -248,7 +251,10 @@ class MemCmd
  */
 class Packet : public Printable
 {
-  public:
+    friend class simbricks::SplitCPUAdapter;
+    //friend class SplitMEMAdapter;
+
+   public:
     typedef uint32_t FlagsType;
     typedef ::Flags<FlagsType> Flags;
 
@@ -1350,6 +1356,14 @@ class Packet : public Printable
      * @return string with the request's type and start<->end addresses
      */
     std::string print() const;
+
+    /**
+     * Returns Flag, for making split-gem5 message
+     *
+     */
+    FlagsType getFlag() {
+        return static_cast<Packet::FlagsType>(flags);
+    }
 };
 
 #endif //__MEM_PACKET_HH

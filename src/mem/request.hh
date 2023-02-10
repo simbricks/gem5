@@ -76,6 +76,10 @@ namespace ContextSwitchTaskId {
     };
 }
 
+namespace simbricks {
+    class SplitCPUAdapter;
+};
+
 class Packet;
 class Request;
 class ThreadContext;
@@ -85,6 +89,9 @@ typedef uint16_t MasterID;
 
 class Request
 {
+    friend class simbricks::SplitCPUAdapter;
+    //friend class SplitMEMAdapter;
+
   public:
     typedef uint64_t FlagsType;
     typedef uint8_t ArchFlagsType;
@@ -359,6 +366,10 @@ class Request
     AtomicOpFunctorPtr atomicOpFunctor = nullptr;
 
     LocalAccessor _localAccessor;
+
+    /** Simbricks CPU adapter received request sequence number **/
+    uint64_t _sbReqSeq = 0;
+
 
   public:
 

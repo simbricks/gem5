@@ -34,12 +34,14 @@ extern "C" {
 #include <simbricks/base/if.h>
 };
 
+class SplitCPUAdapter;
 namespace base {
 
 class InitManager;
 class Adapter : public EventManager {
   private:
     friend class InitManager;
+    friend class simbricks::SplitCPUAdapter;
 
     bool sync;
     bool isListen;
