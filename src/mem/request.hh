@@ -78,6 +78,7 @@ namespace ContextSwitchTaskId {
 
 namespace simbricks {
     class SplitCPUAdapter;
+    class SplitMEMAdapter;
 };
 
 class Packet;
@@ -90,7 +91,7 @@ typedef uint16_t MasterID;
 class Request
 {
     friend class simbricks::SplitCPUAdapter;
-    //friend class SplitMEMAdapter;
+    friend class simbricks::SplitMEMAdapter;
 
   public:
     typedef uint64_t FlagsType;

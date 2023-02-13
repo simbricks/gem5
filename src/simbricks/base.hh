@@ -35,6 +35,7 @@ extern "C" {
 };
 
 class SplitCPUAdapter;
+class SplitMEMAdapter;
 namespace base {
 
 class InitManager;
@@ -42,6 +43,7 @@ class Adapter : public EventManager {
   private:
     friend class InitManager;
     friend class simbricks::SplitCPUAdapter;
+    friend class simbricks::SplitMEMAdapter;
 
     bool sync;
     bool isListen;

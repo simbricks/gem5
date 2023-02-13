@@ -1,0 +1,53 @@
+make script for each host
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+START 1656946853
+Starting gem5 instance 0
+Starting gem5 instance 1
+Starting gem5 instance 2
+Starting gem5 instance 3
+Starting gem5 instance 4
+Starting gem5 instance 5
+Starting gem5 instance 6
+Starting gem5 instance 7
+Starting gem5 instance 8
+Starting gem5 instance 9
+Starting gem5 instance 10
+Starting gem5 instance 11
+Starting gem5 instance 12
+Starting gem5 instance 13
+Starting gem5 instance 14
+Starting gem5 instance 15
+Starting switch
+Cleaning up
+EXIT 1656961053

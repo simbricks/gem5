@@ -2,7 +2,7 @@ Import("*")
 
 SimObject('SplitAdapter.py')
 Source('split_cpu_adapter.cc')
-#Source('split_mem_adapter.cc')
+Source('split_mem_adapter.cc')
 
 DebugFlag('SplitCPUAdapter')
-#DebugFlag('SplitMEMAdapter')
+DebugFlag('SplitMEMAdapter')

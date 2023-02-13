@@ -1,0 +1,101 @@
+make script for each host
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+guest/
+guest/run.sh
+START 1656972783
+Starting gem5 instance 0
+Starting gem5 instance 1
+Starting gem5 instance 2
+Starting gem5 instance 3
+Starting gem5 instance 4
+Starting gem5 instance 5
+Starting gem5 instance 6
+Starting gem5 instance 7
+Starting gem5 instance 8
+Starting gem5 instance 9
+Starting gem5 instance 10
+Starting gem5 instance 11
+Starting gem5 instance 12
+Starting gem5 instance 13
+Starting gem5 instance 14
+Starting gem5 instance 15
+Starting gem5 instance 16
+Starting gem5 instance 17
+Starting gem5 instance 18
+Starting gem5 instance 19
+Starting gem5 instance 20
+Starting gem5 instance 21
+Starting gem5 instance 22
+Starting gem5 instance 23
+Starting gem5 instance 24
+Starting gem5 instance 25
+Starting gem5 instance 26
+Starting gem5 instance 27
+Starting gem5 instance 28
+Starting gem5 instance 29
+Starting gem5 instance 30
+Starting gem5 instance 31
+Starting switch
+Cleaning up
+EXIT 1656989857

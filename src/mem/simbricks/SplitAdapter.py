@@ -29,20 +29,24 @@ class SplitCPUAdapter(SimObject):
     link_latency = Param.Latency('10ns', "Latency for forwarding request/response")
 
 
-# class SplitMEMAdapter(SimObject):
-#     type = 'SplitMEMAdapter'
-#     cxx_header = "mem/simbricks/split_mem_adapter.hh"
-#     cxx_class = 'gem5::SplitMEMAdapter'
+class SplitMEMAdapter(SimObject):
+    type = 'SplitMEMAdapter'
+    cxx_header = "mem/simbricks/split_mem_adapter.hh"
+    cxx_class = 'simbricks::SplitMEMAdapter'
 
-#     latency = Param.Latency('10ns', "Latency for forwarding request/response")
-#     mem_side = MasterPort("Memory side port, receives responbes")
+    mem_side = MasterPort("Memory side port, receives responbes")
+    latency = Param.Latency('10ns', "Latency for forwarding request/response")
 
-#     pio_proxy = ResponsePort("bridges pio packets between CPU and memory bus")
-#     int_resp_proxy = ResponsePort("bridges interrupt response packets \
-#         between CPU and memory bus")
-#     int_req_proxy = RequestPort("bridges interrupt request packets \
-#         between CPU and memory bus")
-#     sync = Param.Bool(True, "synchronized or not")
+    pio_proxy = SlavePort("bridges pio packets between CPU and memory bus")
+    int_resp_proxy = SlavePort("bridges interrupt response packets \
+        between CPU and memory bus")
+    int_req_proxy = MasterPort("bridges interrupt request packets \
+        between CPU and memory bus")
 
-#     uxsocket_path = Param.String("unix socket path")
-#     shm_path = Param.String("Shared memory path")
+    listen = Param.Bool(False, "Open listening instead of connecting")
+    uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("Shared memory path")
+    sync = Param.Bool(True, "synchronized or not")
+    poll_interval = Param.Latency('100us', "poll interval size (unsync only)")
+    sync_tx_interval = Param.Latency('500ns', "interval between syncs")
+    link_latency = Param.Latency('10ns', "Latency for forwarding request/response")

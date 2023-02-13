@@ -71,7 +71,7 @@ class MemCmd
 {
     friend class Packet;
     friend class simbricks::SplitCPUAdapter;
-    //friend class SplitMEMAdapter;
+    friend class simbricks::SplitMEMAdapter;
 
 
   public:
@@ -252,7 +252,7 @@ class MemCmd
 class Packet : public Printable
 {
     friend class simbricks::SplitCPUAdapter;
-    //friend class SplitMEMAdapter;
+    friend class simbricks::SplitMEMAdapter;
 
    public:
     typedef uint32_t FlagsType;

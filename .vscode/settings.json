@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "*.sm": "cpp",
+        "*.inc": "cpp",
+        "*.tcc": "cpp",
+        "fstream": "cpp",
+        "iosfwd": "cpp",
+        "istream": "cpp",
+        "limits": "cpp",
+        "shared_mutex": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "*.def": "cpp",
+        "iostream": "cpp",
+        "new": "cpp"
+    },
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "${workspaceFolder}/ext/dsent"
+}
