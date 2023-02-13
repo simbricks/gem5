@@ -9,7 +9,7 @@
 
 namespace simbricks {
 int id = 0;
-void sigint_handler(int dummy) {
+static void sigint_handler(int dummy) {
   std::cout << "main_time = " << curTick() << std::endl;
   exit(0);
 }

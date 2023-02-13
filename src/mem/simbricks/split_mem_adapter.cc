@@ -9,8 +9,8 @@
 
 namespace simbricks{
 
-int id = 0;
-void sigint_handler(int dummy)
+static int id = 0;
+static void sigint_handler(int dummy)
 {
     std::cout << "main_time = " << curTick() << std::endl;
     exit(0);
@@ -46,6 +46,21 @@ void SplitMEMAdapter::startup() {
   adapter.startup();
 }
 
+
+size_t
+SplitMEMAdapter::introOutPrepare(void *data, size_t maxlen)
+{
+    size_t introlen = sizeof(struct SimbricksProtoMemIntro);
+    assert(introlen <= maxlen);
+    memset(data, 0, introlen);
+    return introlen;
+}
+
+void
+SplitMEMAdapter::introInReceived(const void *data, size_t len)
+{
+    assert(len == sizeof(struct SimbricksProtoMemIntro));
+}
 
 Port &
 SplitMEMAdapter::getPort(const std::string &if_name, PortID idx){
