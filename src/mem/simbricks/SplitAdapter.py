@@ -22,7 +22,7 @@ class SplitCPUAdapter(SimObject):
 
     listen = Param.Bool(False, "Open listening instead of connecting")
     uxsocket_path = Param.String("unix socket path")
-    shm_path = Param.String("Shared memory path")
+    shm_path = Param.String('/tmp/splitsim/', "Shared memory path")
     sync = Param.Bool(True, "Synchronized CPUAdapter")
     poll_interval = Param.Latency('100us', "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency('500ns', "interval between syncs")
@@ -45,7 +45,7 @@ class SplitMEMAdapter(SimObject):
 
     listen = Param.Bool(False, "Open listening instead of connecting")
     uxsocket_path = Param.String("unix socket path")
-    shm_path = Param.String("Shared memory path")
+    shm_path = Param.String('/tmp/splitsim/',"Shared memory path")
     sync = Param.Bool(True, "synchronized or not")
     poll_interval = Param.Latency('100us', "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency('500ns', "interval between syncs")
