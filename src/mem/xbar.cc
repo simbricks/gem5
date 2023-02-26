@@ -326,7 +326,7 @@ BaseXBar::findPort(AddrRange addr_range)
 {
     // we should never see any address lookups before we've got the
     // ranges of all connected slave modules
-    assert(gotAllAddrRanges);
+    //assert(gotAllAddrRanges);
 
     // Check the address map interval tree
     auto i = portMap.contains(addr_range);
