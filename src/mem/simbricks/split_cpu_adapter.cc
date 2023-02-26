@@ -35,7 +35,9 @@ SplitCPUAdapter::SplitCPUAdapter(const Params *params)
     adapter.connect(params->uxsocket_path);
   }
 
+
   signal(SIGINT, sigint_handler);
+  adapter.init();
 }
 
 SplitCPUAdapter::~SplitCPUAdapter()
@@ -100,8 +102,8 @@ SplitCPUAdapter::sendRangeChange(){
 bool
 SplitCPUAdapter::handleRequest(PacketPtr pkt){
 
-    DPRINTF(SplitCPUAdapter, "Got request for addr %#x, schedule at %u\n",
-        pkt->getAddr(), curTick()+latency);
+    DPRINTF(SplitCPUAdapter, "Got request for addr %#x, at %u\n",
+        pkt->getAddr(), curTick());
 
     return true;
 }
@@ -127,7 +129,7 @@ SplitCPUAdapter::CPUSidePort::recvTimingReq(PacketPtr pkt){
 
     DPRINTF(SplitCPUAdapter, "insert reqCount: %d requestorID: %d"
         " taskId: %u\n pktptr: %p ReqPtr: %p\n", \
-        owner->reqCount, pkt->req->_requestorId, \
+        owner->reqCount, pkt->req->_masterId, \
         pkt->req->_taskId, pkt, pkt->req);
 
     volatile union SplitProtoC2M *msg = owner->c2mAlloc(false, false);
@@ -357,7 +359,6 @@ void SplitCPUAdapter::initIfParams(SimbricksBaseIfParams &p) {
 void
 SplitCPUAdapter::init()
 {
-    adapter.init();
 }
 
 
