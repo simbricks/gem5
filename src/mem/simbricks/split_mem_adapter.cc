@@ -341,7 +341,7 @@ SplitMEMAdapter::handleInMsg(volatile SplitProtoC2M *msg){
         case SPLIT_PROTO_C2M_SYNC:
             DPRINTF(SplitMEMAdapter, \
                 "received sync from CPU Side ts: %lu\n", \
-                devLastTime);
+                adapter.baseIf.in_timestamp);
             break;
         case SPLIT_PROTO_C2M_RECV:
             if (msg->dummy.pkt_type & PACKET_ADDR_RANGE){
