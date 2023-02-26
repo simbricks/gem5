@@ -1,0 +1,11 @@
+all: bs
+
+bs: bs.c dockcross-mips
+	./dockcross-mips bash -c '$$CC bs.c -o bs -static'
+
+dockcross-mips:
+	docker run --rm dockcross/linux-mips > ./dockcross-mips
+	chmod +x ./dockcross-mips
+
+clean:
+	rm -f dockcross* bs

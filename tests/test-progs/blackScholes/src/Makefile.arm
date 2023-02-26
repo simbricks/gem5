@@ -1,0 +1,18 @@
+all: bs64-static bs32-static
+
+bs64-static: bs.c dockcross-arm64
+	./dockcross-arm64 bash -c '$$CC bs.c -o bs64-static -static'
+
+bs32-static: bs.c dockcross-armv7
+	./dockcross-armv7 bash -c '$$CC bs.c -o bs32-static -static'
+
+dockcross-arm64:
+	docker run --rm dockcross/linux-arm64 > ./dockcross-arm64
+	chmod +x ./dockcross-arm64
+
+dockcross-armv7:
+	docker run --rm dockcross/linux-armv7 > ./dockcross-armv7
+	chmod +x ./dockcross-armv7
+
+clean:
+	rm -f dockcross* bs64-static bs32-static

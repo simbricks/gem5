@@ -1,0 +1,11 @@
+all: bs64le-static
+
+bs64le-static: bs.c dockcross-ppc64le
+	./dockcross-ppc64le bash -c '$$CC bs.c -o bs64le-static -static'
+
+dockcross-ppc64le:
+	docker run --rm dockcross/linux-ppc64le > ./dockcross-ppc64le
+	chmod +x ./dockcross-ppc64le
+
+clean:
+	rm -f dockcross* bs64le-static
