@@ -16,6 +16,10 @@ static void sigint_handler(int dummy)
     exit(0);
 }
 
+static void sigusr1_handler(int dummy) {
+  std::cout << "main_time = " << curTick() << std::endl;
+}
+
 SplitMEMAdapter::SplitMEMAdapter(const Params *params)
     : SimObject(params),
       base::GenericBaseAdapter<SplitProtoC2M, SplitProtoM2C>::Interface(*this),
@@ -36,6 +40,8 @@ SplitMEMAdapter::SplitMEMAdapter(const Params *params)
     }
 
     signal(SIGINT, sigint_handler);
+    signal(SIGUSR1, sigusr1_handler);
+
 }
 
 SplitMEMAdapter::~SplitMEMAdapter()
@@ -300,14 +306,14 @@ SplitMEMAdapter::handleResponse(PacketPtr pkt){
     DPRINTF(SplitMEMAdapter, "Got response for addr %#x\n", pkt->getAddr());
 
 ////////////// print packet /////////////////////
-    int vsize = pkt->bytesValid.size();
-    DPRINTF(SplitMEMAdapter, "cmd: %s, id: %u, "
-    "data: %p, addr: %p\nsec: %u, size: %u, qos: %u"
-    " bytesValidSize: %d\n", \
-    pkt->cmd.toString().c_str(), pkt->id, (uint8_t *)pkt->data, \
-    pkt->getAddr(),pkt->isSecure(), \
-    pkt->getSize(), pkt->qosValue(), \
-    vsize);
+    // int vsize = pkt->bytesValid.size();
+    // DPRINTF(SplitMEMAdapter, "cmd: %s, id: %u, "
+    // "data: %p, addr: %p\nsec: %u, size: %u, qos: %u"
+    // " bytesValidSize: %d\n", \
+    // pkt->cmd.toString().c_str(), pkt->id, (uint8_t *)pkt->data, \
+    // pkt->getAddr(),pkt->isSecure(), \
+    // pkt->getSize(), pkt->qosValue(), \
+    // vsize);
 
     //DPRINTF(SplitMEMAdapter, "reqptr: %p reqTaskId: %u cmdInt: %u\n",
     //pkt->req,
@@ -467,6 +473,7 @@ SplitMEMAdapter::handleInMsg(volatile SplitProtoC2M *msg){
         default:
             panic("pollQueues: unsupported type=%x\n", ty);
     }
+    adapter.inDone(msg);
 
 }
 

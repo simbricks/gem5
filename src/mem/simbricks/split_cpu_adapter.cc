@@ -14,6 +14,10 @@ static void sigint_handler(int dummy) {
   exit(0);
 }
 
+static void sigusr1_handler(int dummy) {
+  std::cout << "main_time = " << curTick() << std::endl;
+}
+
 SplitCPUAdapter::SplitCPUAdapter(const Params *params)
     : SimObject(params),
       base::GenericBaseAdapter<SplitProtoM2C, SplitProtoC2M>::Interface(*this),
@@ -37,6 +41,7 @@ SplitCPUAdapter::SplitCPUAdapter(const Params *params)
 
 
   signal(SIGINT, sigint_handler);
+  signal(SIGUSR1, sigusr1_handler);
   adapter.init();
 }
 
@@ -344,6 +349,7 @@ void SplitCPUAdapter::handleInMsg(volatile SplitProtoM2C *msg) {
         default:
           panic("handleInMsg: unsupported type=%x", pkt_ty);
     }
+    adapter.inDone(msg);
 }
 
 void SplitCPUAdapter::startup() {
@@ -370,14 +376,15 @@ SplitCPUAdapter::handleFunctional(PacketPtr pkt){
 
     //print one packet
     if (id <= 10){
+        DPRINTF(SplitCPUAdapter, "id: %d\n", id);
         int vsize = pkt->bytesValid.size();
-        DPRINTF(SplitCPUAdapter, "cmd: %s, id: %u, "
-        "data: %p, addr: %p\nsec: %u, size: %u, qos: %u"
-        " bytesValidSize: %d\n", \
-        pkt->cmd.toString().c_str(), pkt->id, (uint8_t *)pkt->data, \
-        pkt->getAddr(),pkt->isSecure(), \
-        pkt->getSize(), pkt->qosValue(), \
-        vsize);
+        // DPRINTF(SplitCPUAdapter, "cmd: %s, id: %u, "
+        // "data: %p, addr: %p\nsec: %u, size: %u, qos: %u"
+        // " bytesValidSize: %d\n", \
+        // pkt->cmd.toString().c_str(), pkt->id, (uint8_t *)pkt->data, \
+        // pkt->getAddr(),pkt->isSecure(), \
+        // pkt->getSize(), pkt->qosValue(), \
+        // vsize);
 
         int k = 0;
         for (k = 0; k < pkt->getSize(); k += 8){
