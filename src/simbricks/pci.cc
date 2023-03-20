@@ -203,13 +203,14 @@ Device::readAsync(PciPioCompl &comp)
     int bar;
     Addr daddr;
 
-    DPRINTF(SimBricksPci, "simbricks-pci: sending read addr %x size %x "
-            "id %lu\n",
-            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
-
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
         panic("Invalid PCI memory address\n");
     }
+
+    DPRINTF(SimBricksPci, "simbricks-pci: sending read addr %x size %x "
+            "id %lu bar %d offs %x\n",
+            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
+            bar, daddr);
 
     if (readMsix(comp, daddr, bar))
         return;
@@ -230,13 +231,14 @@ Device::writeAsync(PciPioCompl &comp)
     int bar;
     Addr daddr;
 
-    DPRINTF(SimBricksPci,
-            "simbricks-pci: sending write addr %x size %x id %lu\n",
-            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
-
     if (!getBAR(comp.pkt->getAddr(), bar, daddr)) {
         panic("Invalid PCI memory address\n");
     }
+
+    DPRINTF(SimBricksPci, "simbricks-pci: sending write addr %x size %x "
+            "id %lu bar %d offs %x\n",
+            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
+            bar, daddr);
 
     if (writeMsix(comp, daddr, bar))
         return;
