@@ -330,7 +330,9 @@ void SplitCPUAdapter::handleInMsg(volatile SplitProtoM2C *msg) {
                 in_flight.erase(search);
 
                 DPRINTF(SplitCPUAdapter, "do mem timing response\n");
-                cpu_side.sendTimingResp(pkt);
+                if (!cpu_side.sendTimingResp(pkt)){
+                    DPRINTF(SplitCPUAdapter, "sendTimingResp failed\n");
+                }
 
               } else {
                 DPRINTF(SplitCPUAdapter,
