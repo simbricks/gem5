@@ -95,6 +95,7 @@ Adapter::commonInit(const std::string &sock_path)
 
     params.sock_path = sock_path.c_str();
     params.blocking_conn = false;
+    params.in_entries_size = params.out_entries_size = 9024 + 64;
     if (sync)
         params.sync_mode = kSimbricksBaseIfSyncRequired;
     else
