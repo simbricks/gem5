@@ -1,4 +1,5 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Max Planck Institute for Software Systems, and
+# National University of Singapore
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -23,32 +24,26 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mainmenu "$(MAIN_MENU_TEXT)"
+Import('*')
 
-config BATCH
-    bool "Use batch pool for build and test"
-    default n
+from gem5_scons import warning
+import gem5_scons
 
-config BATCH_CMD
-    string "Batch pool submission command name"
-    default "qdo"
-    depends on BATCH
+with gem5_scons.Configure(main) as conf:
+    # Check if the SimBricks libraries can be found.
+    if 'CCFLAGS_EXTRA' in conf.env['ENV']:
+        conf.env.Append(CCFLAGS=conf.env['ENV']['CCFLAGS_EXTRA'])
 
-config M5_BUILD_CACHE
-    string "Cache built objects in this directory"
-    default ""
+    if 'LIBRARY_PATH' in conf.env['ENV']:
+        conf.env.Append(LIBPATH=conf.env['ENV']['LIBRARY_PATH'])
 
-config USE_EFENCE
-    bool "Link with Electric Fence malloc debugger"
-    default n
+    conf.env['CONF']['HAVE_SIMBRICKS'] = \
+            conf.CheckLibWithHeader('simbricks', 'simbricks/base/if.h', 'C',
+                                    ('struct SimbricksBaseIfParams p;'
+                                     ' SimbricksBaseIfDefaultParams(&p);'))
 
-rsource "base/Kconfig"
-rsource "mem/ruby/Kconfig"
-rsource "learning_gem5/part3/Kconfig"
-rsource "proto/Kconfig"
-rsource "dev/net/Kconfig"
-rsource "arch/Kconfig"
-rsource "cpu/Kconfig"
-rsource "simbricks/Kconfig"
-rsource "systemc/Kconfig"
-rsource "gpu-compute/Kconfig"
+    if conf.env['CONF']['HAVE_SIMBRICKS']:
+        conf.env.TagImplies('simbricks', 'gem5 lib')
+    else:
+        warning("Couldn't find SimBricks libraries."
+                " Disabling SimBricks support.")
