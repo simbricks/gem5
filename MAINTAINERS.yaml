@@ -244,6 +244,14 @@ sim-se:
         Syscall emulation
     status: orphaned
 
+simbricks:
+  desc: >-
+    Integration into SimBricks modular simulation framework
+  status: maintained
+  maintainers:
+    - Hejing Li <hejingli@mpi-sws.org>
+    - Antoine Kaufmann <antoinek@mpi-sws.org>
+
 system-arm:
     status: maintained
     maintainers:
