@@ -47,3 +47,23 @@ class SimBricksEthernet(SimObject):
     poll_interval = Param.Latency("100us", "poll interval size (unsync only)")
     sync_tx_interval = Param.Latency("500ns", "interval between syncs")
     link_latency = Param.Latency("500ns", "Ethernet latency")
+
+
+class SimBricksMem(SimObject):
+    type = "SimBricksMem"
+    cxx_class = "gem5::simbricks::mem::Adapter"
+    cxx_header = "simbricks/mem.hh"
+
+    port = ResponsePort("Port to access the memory from CPU/Caches")
+
+    listen = Param.Bool(False, "Open listening instead of connecting")
+    uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("", "Shared memory path")
+    sync = Param.Bool(False, "Synchronize over Ethernet")
+    poll_interval = Param.Latency("100us", "poll interval size (unsync only)")
+    sync_tx_interval = Param.Latency("500ns", "interval between syncs")
+    link_latency = Param.Latency("500ns", "Ethernet latency")
+
+    static_as_id = Param.UInt64(0x0, "Static address space ID for requests")
+    base_address = Param.Addr("Memory Base Address")
+    size = Param.Addr("Memory Size")
