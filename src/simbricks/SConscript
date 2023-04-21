@@ -43,13 +43,16 @@
 Import('*')
 
 if env['CONF']['USE_SIMBRICKS']:
-    SimObject('SimBricks.py', sim_objects=['SimBricksEthernet'])
+    SimObject('SimBricks.py',
+        sim_objects=['SimBricksEthernet', 'SimBricksMem'])
     Source('base.cc')
     Source('init_manager.cc')
     Source('ethernet.cc')
+    Source('mem.cc')
 
 DebugFlag('SimBricks')
 DebugFlag('SimBricksSync')
 DebugFlag('SimBricksEthernet')
+DebugFlag('SimBricksMem')
 CompoundFlag('SimBricksAll', [ 'SimBricks', 'SimBricksSync',
-    'SimBricksEthernet'])
+    'SimBricksEthernet', 'SimBricksMem'])
