@@ -1491,7 +1491,7 @@ Device::unserialize(CheckpointIn &cp)
     if (transmitTick)
         schedule(txEvent, curTick() + transmitTick);
 
-    pioPort.sendRangeChange();
+    getPioPort().sendRangeChange();
 
 }
 

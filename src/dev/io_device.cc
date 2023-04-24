@@ -48,7 +48,7 @@ namespace gem5
 {
 
 PioDevice::PioDevice(const Params &p)
-    : ClockedObject(p), sys(p.system), pioPort(this)
+    : ClockedObject(p), pioPort(this), sys(p.system)
 {}
 
 PioDevice::~PioDevice()
@@ -58,16 +58,17 @@ PioDevice::~PioDevice()
 void
 PioDevice::init()
 {
-    if (!pioPort.isConnected())
+    ResponsePort &pp = getPioPort();
+    if (!pp.isConnected())
         panic("Pio port of %s not connected to anything!", name());
-    pioPort.sendRangeChange();
+    pp.sendRangeChange();
 }
 
 Port &
 PioDevice::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "pio") {
-        return pioPort;
+        return getPioPort();
     }
     return ClockedObject::getPort(if_name, idx);
 }

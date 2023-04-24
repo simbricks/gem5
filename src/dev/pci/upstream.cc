@@ -63,7 +63,7 @@ PciConfigError::setAddrRange(AddrRange range)
         pioSize = 0;
     }
 
-    pioPort.sendRangeChange();
+    getPioPort().sendRangeChange();
 }
 
 PciUpstream::PciUpstream(const Params &p)
