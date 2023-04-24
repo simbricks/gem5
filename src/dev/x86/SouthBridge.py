@@ -34,6 +34,7 @@ from m5.objects.PciDevice import (
     PciIoBar,
     PciLegacyIoBar,
 )
+from m5.objects.MSITarget import MSITarget
 from m5.objects.PcSpeaker import PcSpeaker
 from m5.objects.X86Ide import X86IdeController
 from m5.params import *
@@ -75,6 +76,9 @@ class SouthBridge(SimObject):
         PcSpeaker(pio_addr=x86IOAddress(0x61)), "PC speaker"
     )
     io_apic = Param.I82094AA(I82094AA(pio_addr=0xFEC00000), "I/O APIC")
+    msi = Param.MSITarget(
+        MSITarget(pio_addr=0xFEE00000), "MSI Interrupt target"
+    )
 
     # IDE controller
     ide = X86IdeController(disks=[], pci_func=0, pci_dev=4, pci_bus=0)
@@ -108,3 +112,5 @@ class SouthBridge(SimObject):
         self.speaker.pio = bus.mem_side_ports
         self.io_apic.pio = bus.mem_side_ports
         self.io_apic.int_requestor = bus.cpu_side_ports
+        self.msi.pio = bus.mem_side_ports
+        self.msi.int_requestor = bus.cpu_side_ports
