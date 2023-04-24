@@ -348,6 +348,12 @@ class PciDevice : public DmaDevice
         return false;
     }
 
+    void readConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+         const uint8_t *basePtr, size_t len);
+
+    void writeConfigBytes(PacketPtr pkt, int off, int baseOff,
+            uint8_t *base_ptr, size_t len);
+
   public: // Host configuration interface
     /**
      * Write to the PCI config space data that is stored locally. This may be
@@ -435,6 +441,14 @@ class PciEndpoint : public PciDevice
      * a PciHost object.
      */
     PciEndpoint(const PciEndpointParams &params);
+
+    /**
+     * Read from the PCI config space data that is stored locally. This may be
+     * overridden by the device but at some point it will eventually call this
+     * for normal operations that it does not need to override.
+     * @param pkt packet containing the write the offset into config space
+     */
+    virtual Tick readConfig(PacketPtr pkt);
 
     /**
      * Write to the PCI config space data that is stored locally. This may be
