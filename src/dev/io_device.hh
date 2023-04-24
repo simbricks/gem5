@@ -101,12 +101,22 @@ class PioPort : public SimpleTimingPort
  */
 class PioDevice : public ClockedObject
 {
-  protected:
-    System *sys;
-
+  private:
     /** The pioPort that handles the requests for us and provides us requests
      * that it sees. */
     PioPort<PioDevice> pioPort;
+
+  protected:
+    System *sys;
+
+    /**
+     * Return response port that this device uses for PIO. Allows derived
+     * classes to override the port implementation.
+     */
+    virtual ResponsePort &getPioPort()
+    {
+        return pioPort;
+    }
 
     /**
      * Every PIO device is obliged to provide an implementation that
