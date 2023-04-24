@@ -183,10 +183,12 @@ PciDevice::PciDevice(const PciDeviceParams &p)
         }
         msix_pba.resize(pba_size, tmp2);
     }
-    MSIX_TABLE_OFFSET = msixcap.mtab & 0xfffffffc;
+    MSIX_TABLE_BAR = msixcap.mtab & 0x7;
+    MSIX_TABLE_OFFSET = msixcap.mtab & 0xfffffff8;
     MSIX_TABLE_END = MSIX_TABLE_OFFSET +
                      (msixcap_mxc_ts + 1) * sizeof(MSIXTable);
-    MSIX_PBA_OFFSET = msixcap.mpba & 0xfffffffc;
+    MSIX_PBA_BAR = msixcap.mpba & 0x7;
+    MSIX_PBA_OFFSET = msixcap.mpba & 0xfffffff8;
     MSIX_PBA_END = MSIX_PBA_OFFSET +
                    ((msixcap_mxc_ts + 1) / MSIXVECS_PER_PBA)
                    * sizeof(MSIXPbaEntry);

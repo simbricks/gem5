@@ -291,8 +291,10 @@ class PciDevice : public DmaDevice
     const int MSIXCAP_MXC_OFFSET;
     const int MSIXCAP_MTAB_OFFSET;
     const int MSIXCAP_MPBA_OFFSET;
+    int MSIX_TABLE_BAR;
     int MSIX_TABLE_OFFSET;
     int MSIX_TABLE_END;
+    int MSIX_PBA_BAR;
     int MSIX_PBA_OFFSET;
     int MSIX_PBA_END;
     MSIXCAP msixcap;
