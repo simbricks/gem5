@@ -68,3 +68,7 @@ DebugFlag('I82094AA', tags='x86 isa')
 
 SimObject('X86QemuFwCfg.py', sim_objects=['QemuFwCfgItemE820'], tags='x86 isa')
 Source('qemu_fw_cfg.cc', tags='x86 isa')
+
+SimObject('MSITarget.py', sim_objects=['MSITarget'], tags='x86 isa')
+Source('msi_target.cc')
+DebugFlag('MSITarget', tags='x86 isa')
