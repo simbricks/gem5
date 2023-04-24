@@ -210,14 +210,86 @@ PciDevice::PciDevice(const PciDeviceParams &p)
     pxcap.pxdc2 = p.PXCAPDevCtrl2;
 }
 
+void
+PciDevice::readConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+        const uint8_t *basePtr, size_t len)
+{
+    int offset = addr - baseAddr;
+
+    /* todo handle size too large */
+    switch (pkt->getSize()) {
+      case sizeof(uint8_t):
+        pkt->setLE<uint8_t>(basePtr[offset]);
+        DPRINTF(PciDevice,
+            "readConfig:  dev %#x func %#x reg %#x 1 bytes: data = %#x\n",
+            _busAddr.dev, _busAddr.func, addr,
+            (uint32_t)pkt->getLE<uint8_t>());
+        break;
+      case sizeof(uint16_t):
+        pkt->setLE<uint16_t>(*(uint16_t*)&basePtr[offset]);
+        DPRINTF(PciDevice,
+            "readConfig:  dev %#x func %#x reg %#x 2 bytes: data = %#x\n",
+            _busAddr.dev, _busAddr.func, addr,
+            (uint32_t)pkt->getLE<uint16_t>());
+        break;
+      case sizeof(uint32_t):
+        pkt->setLE<uint32_t>(*(uint32_t*)&basePtr[offset]);
+        DPRINTF(PciDevice,
+            "readConfig:  dev %#x func %#x reg %#x 4 bytes: data = %#x\n",
+            _busAddr.dev, _busAddr.func, addr,
+            (uint32_t)pkt->getLE<uint32_t>());
+        break;
+      default:
+        panic("invalid access size(?) for PCI configspace!\n");
+    }
+    pkt->makeAtomicResponse();
+}
+
+void
+PciDevice::writeConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+        uint8_t *basePtr, size_t len)
+{
+    int offset = addr - baseAddr;
+
+    switch (pkt->getSize()) {
+      case sizeof(uint8_t):
+        basePtr[offset] = pkt->getLE<uint8_t>();
+        break;
+      case sizeof(uint16_t):
+        *(uint16_t *) &basePtr[offset] = pkt->getLE<uint16_t>();
+        break;
+      case sizeof(uint32_t):
+        *(uint32_t *) &basePtr[offset] = pkt->getLE<uint32_t>();
+        break;
+      default:
+        panic("invalid access size(?) for PCI configspace!\n");
+    }
+    pkt->makeAtomicResponse();
+}
+
 Tick
 PciDevice::readConfig(PacketPtr pkt)
 {
     int offset = pkt->getAddr() & PCI_CONFIG_SIZE;
 
-    /* Return 0 for accesses to unimplemented PCI configspace areas */
-    if (offset >= PCI_DEVICE_SPECIFIC &&
+
+    if (MSICAP_BASE && offset >= MSICAP_BASE &&
+            offset < MSICAP_BASE + sizeof(msicap))
+    {
+        /* intercept reads from MSI cap */
+        readConfigBytes(pkt, offset, MSICAP_BASE, msicap.data,
+                sizeof(msicap));
+        return configDelay;
+    } else if (MSIXCAP_BASE && offset >= MSIXCAP_BASE &&
+            offset < MSIXCAP_BASE + sizeof(msixcap))
+    {
+        /* intercept reads from MSI-X cap */
+        readConfigBytes(pkt, offset, MSIXCAP_BASE, msixcap.data,
+                sizeof(msixcap));
+        return configDelay;
+    } else if (offset >= PCI_DEVICE_SPECIFIC &&
         offset < PCI_CONFIG_SIZE) {
+        /* Return 0 for accesses to unimplemented PCI configspace areas */
         warn_once("Device specific PCI config space "
                   "not implemented for %s!\n", this->name());
         switch (pkt->getSize()) {
@@ -286,9 +358,23 @@ PciDevice::writeConfig(PacketPtr pkt)
 {
     int offset = pkt->getAddr() & PCI_CONFIG_SIZE;
 
-    /* No effect if we write to config space that is not implemented*/
-    if (offset >= PCI_DEVICE_SPECIFIC &&
+    if (MSICAP_BASE && offset >= MSICAP_BASE &&
+            offset < MSICAP_BASE + sizeof(msicap))
+    {
+        /* intercept writes to msi cap */
+        writeConfigBytes(pkt, offset, MSICAP_BASE, msicap.data,
+                sizeof(msicap));
+        return configDelay;
+    } else if (MSIXCAP_BASE && offset >= MSIXCAP_BASE &&
+            offset < MSIXCAP_BASE + sizeof(msixcap))
+    {
+        /* intercept writes to msi-x cap */
+        writeConfigBytes(pkt, offset, MSIXCAP_BASE, msixcap.data,
+                sizeof(msixcap));
+        return configDelay;
+    } else if (offset >= PCI_DEVICE_SPECIFIC &&
         offset < PCI_CONFIG_SIZE) {
+        /* No effect if we write to config space that is not implemented*/
         warn_once("Device specific PCI config space "
                   "not implemented for %s!\n", this->name());
         switch (pkt->getSize()) {
