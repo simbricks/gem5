@@ -390,6 +390,12 @@ class PciDevice : public DmaDevice
     Tick read(PacketPtr pkt) final;
 
   protected:
+    void readConfigBytes(PacketPtr pkt, int addr, int baseAddr,
+         const uint8_t *basePtr, size_t len);
+
+    void writeConfigBytes(PacketPtr pkt, int off, int baseOff,
+            uint8_t *base_ptr, size_t len);
+
     /**
      * Write to the PCI config space data that is stored locally. This may be
      * overridden by the device but at some point it will eventually call this
@@ -508,6 +514,14 @@ class PciEndpoint : public PciDevice
     {
         return _config.type0;
     }
+
+    /**
+     * Read from the PCI config space data that is stored locally. This may be
+     * overridden by the device but at some point it will eventually call this
+     * for normal operations that it does not need to override.
+     * @param pkt packet containing the read the offset into config space
+     */
+    Tick readConfig(PacketPtr pkt) override;
 
     /**
      * Write to the PCI config space data that is stored locally. This may be
