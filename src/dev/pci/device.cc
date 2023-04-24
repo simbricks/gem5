@@ -331,12 +331,12 @@ PciDevice::writeConfig(PacketPtr pkt)
       case sizeof(uint16_t):
         switch (offset) {
           case PCI_COMMAND:
-            config.command = pkt->getLE<uint8_t>();
+            config.command = pkt->getLE<uint16_t>();
             // IO or memory space may have been enabled/disabled.
             pioPort.sendRangeChange();
             break;
           case PCI_STATUS:
-            config.status = pkt->getLE<uint8_t>();
+            config.status = pkt->getLE<uint16_t>();
             break;
           case PCI_CACHE_LINE_SIZE:
             config.cacheLineSize = pkt->getLE<uint8_t>();
