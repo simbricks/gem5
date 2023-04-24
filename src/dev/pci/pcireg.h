@@ -117,6 +117,7 @@ union PCIConfig
 #define PCI_CMD_BME     0x04 // Bus master function enable
 #define PCI_CMD_MSE     0x02 // Memory Space Access enable
 #define PCI_CMD_IOSE    0x01 // I/O space enable
+#define PCI_CMD_INTXDIS 0x400 // INTx emulation disable
 
 // Type 0 PCI offsets
 #define PCI0_BASE_ADDR0         0x10    // Base Address 0               rw
