@@ -340,7 +340,7 @@ PciDevice::writeConfig(PacketPtr pkt)
           case PCI_COMMAND:
             _config.common.command = pkt->getLE<uint16_t>();
             // IO or memory space may have been enabled/disabled.
-            pioPort.sendRangeChange();
+            getPioPort().sendRangeChange();
             break;
           case PCI_STATUS:
             _config.common.status = pkt->getLE<uint16_t>();
@@ -364,7 +364,7 @@ PciDevice::writeConfig(PacketPtr pkt)
             // it for now
             _config.common.command = pkt->getLE<uint32_t>();
             // IO or memory space may have been enabled/disabled.
-            pioPort.sendRangeChange();
+            getPioPort().sendRangeChange();
             break;
 
           default:
@@ -647,7 +647,7 @@ PciEndpoint::writeConfig(PacketPtr pkt)
                 auto *bar = BARs[num];
                 _config.type0.baseAddr[num] =
                     htole(bar->write(hostInterface, pkt->getLE<uint32_t>()));
-                pioPort.sendRangeChange();
+                getPioPort().sendRangeChange();
             }
             break;
 
@@ -681,7 +681,7 @@ PciEndpoint::unserialize(CheckpointIn &cp)
     for (int idx = 0; idx < BARs.size(); idx++)
         BARs[idx]->write(hostInterface, _config.type0.baseAddr[idx]);
 
-    pioPort.sendRangeChange();
+    getPioPort().sendRangeChange();
 }
 
 PciBridge::PciBridge(const PciBridgeParams &p)
@@ -806,7 +806,7 @@ PciBridge::writeConfig(PacketPtr pkt)
               auto *bar = BARs[num];
               _config.type1.baseAddr[num] = htole(
                   bar->write(hostInterface, pkt->getLE<uint32_t>()));
-              pioPort.sendRangeChange();
+              getPioPort().sendRangeChange();
             }
             break;
           case PCI1_PRF_BASE_UPPER:
@@ -844,7 +844,7 @@ PciBridge::unserialize(CheckpointIn &cp)
     for (int idx = 0; idx < BARs.size(); idx++)
         BARs[idx]->write(hostInterface, _config.type1.baseAddr[idx]);
 
-    pioPort.sendRangeChange();
+    getPioPort().sendRangeChange();
 }
 
 } // namespace gem5
