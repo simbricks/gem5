@@ -31,6 +31,8 @@ from m5.SimObject import SimObject
 from m5.params import *
 from m5.proxy import *
 from m5.objects.Ethernet import EtherInt
+from m5.objects.PciDevice import PciBar
+from m5.objects.PciDevice import PciDevice
 
 
 class SimBricksEthernet(SimObject):
@@ -67,3 +69,40 @@ class SimBricksMem(SimObject):
     static_as_id = Param.UInt64(0x0, "Static address space ID for requests")
     base_address = Param.Addr("Memory Base Address")
     size = Param.Addr("Memory Size")
+
+
+class SimBricksPciBar(PciBar):
+    type = "SimBricksPciBar"
+    cxx_class = "gem5::simbricks::pci::Bar"
+    cxx_header = "simbricks/pci_bar.hh"
+
+
+class SimBricksPci(PciDevice):
+    type = "SimBricksPci"
+    cxx_class = "gem5::simbricks::pci::Device"
+    cxx_header = "simbricks/pci.hh"
+
+    listen = Param.Bool(False, "Open listening instead of connecting")
+    uxsocket_path = Param.String("unix socket path")
+    shm_path = Param.String("", "Shared memory path")
+    sync = Param.Bool(False, "Synchronize over PCI")
+    poll_interval = Param.Latency("100us", "poll interval size (unsync only)")
+    sync_tx_interval = Param.Latency("500ns", "interval between syncs")
+    link_latency = Param.Latency("500ns", "PCI latency")
+
+    BAR0 = SimBricksPciBar()
+    BAR1 = SimBricksPciBar()
+    BAR2 = SimBricksPciBar()
+    BAR3 = SimBricksPciBar()
+    BAR4 = SimBricksPciBar()
+    BAR5 = SimBricksPciBar()
+
+    Status = 0x0290
+    MaximumLatency = 0x00
+    MinimumGrant = 0xFF
+    SubsystemID = 0x1008
+    SubsystemVendorID = 0x8086
+
+    # defaults to avoid gem5 erroring out
+    VendorID = 0x0001
+    DeviceID = 0x0001
