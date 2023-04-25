@@ -192,7 +192,6 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
                 pci_func=0,
                 InterruptLine=(16 + self._devid_next),
                 InterruptPin=1,
-                LegacyIOBase=0x8000000000000000,
                 **params,
             )
             setattr(self, "simbricks_" + str(self._num_simbricks), dev)
