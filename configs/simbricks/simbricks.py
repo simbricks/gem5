@@ -280,7 +280,6 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     # Set up the Intel MP table
     base_entries = []
     ext_entries = []
-    madt_records = []
     for i in range(numCPUs):
         bp = X86IntelMPProcessor(
             local_apic_id=i,
@@ -289,16 +288,11 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
             bootstrap=(i == 0),
         )
         base_entries.append(bp)
-        lapic = X86ACPIMadtLAPIC(acpi_processor_id=i, apic_id=i, flags=1)
-        madt_records.append(lapic)
     io_apic = X86IntelMPIOAPIC(
         id=numCPUs, version=0x11, enable=True, address=0xFEC00000
     )
     self.pc.south_bridge.io_apic.apic_id = io_apic.id
     base_entries.append(io_apic)
-    madt_records.append(
-        X86ACPIMadtIOAPIC(id=io_apic.id, address=io_apic.address, int_base=0)
-    )
     # In gem5 Pc::calcPciConfigAddr(), it required "assert(bus==0)",
     # but linux kernel cannot config PCI device if it was not connected to
     # PCI bus, so we fix PCI bus id to 0, and ISA bus id to 1.
@@ -321,13 +315,6 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
             dest_io_apic_intin=16 + dev,
         )
         base_entries.append(pci_dev_inta)
-        pci_dev_inta_madt = X86ACPIMadtIntSourceOverride(
-            bus_source=pci_dev_inta.source_bus_id,
-            irq_source=pci_dev_inta.source_bus_irq,
-            sys_int=pci_dev_inta.dest_io_apic_intin,
-            flags=0,
-        )
-        madt_records.append(pci_dev_inta_madt)
 
     def assignISAInt(irq, apicPin):
         assign_8259_to_apic = X86IntelMPIOIntAssignment(
@@ -350,11 +337,6 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
             dest_io_apic_intin=apicPin,
         )
         base_entries.append(assign_to_apic)
-        # acpi
-        assign_to_apic_acpi = X86ACPIMadtIntSourceOverride(
-            bus_source=1, irq_source=irq, sys_int=apicPin, flags=0
-        )
-        madt_records.append(assign_to_apic_acpi)
 
     assignISAInt(0, 2)
     assignISAInt(1, 1)
@@ -363,14 +345,6 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
     workload.intel_mp_table.base_entries = base_entries
     workload.intel_mp_table.ext_entries = ext_entries
 
-    madt = X86ACPIMadt(
-        local_apic_address=0, records=madt_records, oem_id="madt"
-    )
-    workload.acpi_description_table_pointer.rsdt.entries.append(madt)
-    workload.acpi_description_table_pointer.xsdt.entries.append(madt)
-    workload.acpi_description_table_pointer.oem_id = "gem5"
-    workload.acpi_description_table_pointer.rsdt.oem_id = "gem5"
-    workload.acpi_description_table_pointer.xsdt.oem_id = "gem5"
     return self
 
 
