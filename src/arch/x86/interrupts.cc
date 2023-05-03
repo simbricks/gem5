@@ -405,15 +405,16 @@ X86ISA::Interrupts::readReg(ApicRegIndex reg)
 {
     if (reg >= APIC_TRIGGER_MODE(0) &&
             reg <= APIC_TRIGGER_MODE(15)) {
-        panic("Local APIC Trigger Mode registers are unimplemented.\n");
+        warn_once("Local APIC Trigger Mode registers are unimplemented.\n");
+        return 0;
     }
     switch (reg) {
       case APIC_ARBITRATION_PRIORITY:
-        panic("Local APIC Arbitration Priority register unimplemented.\n");
-        break;
+        warn_once("Local APIC Arbitration Priority register unimplemented.\n");
+        return 0;
       case APIC_PROCESSOR_PRIORITY:
-        panic("Local APIC Processor Priority register unimplemented.\n");
-        break;
+        warn_once("Local APIC Processor Priority register unimplemented.\n");
+        return 0;
       case APIC_ERROR_STATUS:
         regs[APIC_INTERNAL_STATE] &= ~0x1ULL;
         break;
@@ -444,11 +445,13 @@ X86ISA::Interrupts::setReg(ApicRegIndex reg, uint32_t val)
     uint32_t newVal = val;
     if (reg >= APIC_IN_SERVICE(0) &&
             reg <= APIC_IN_SERVICE(15)) {
-        panic("Local APIC In-Service registers are unimplemented.\n");
+        warn_once("Local APIC In-Service registers are unimplemented.\n");
+        return;
     }
     if (reg >= APIC_TRIGGER_MODE(0) &&
             reg <= APIC_TRIGGER_MODE(15)) {
-        panic("Local APIC Trigger Mode registers are unimplemented.\n");
+        warn_once("Local APIC Trigger Mode registers are unimplemented.\n");
+        return;
     }
     if (reg >= APIC_INTERRUPT_REQUEST(0) &&
             reg <= APIC_INTERRUPT_REQUEST(15)) {
@@ -466,11 +469,11 @@ X86ISA::Interrupts::setReg(ApicRegIndex reg, uint32_t val)
         newVal = val & 0xFF;
         break;
       case APIC_ARBITRATION_PRIORITY:
-        panic("Local APIC Arbitration Priority register unimplemented.\n");
-        break;
+        warn_once("Local APIC Arbitration Priority register unimplemented.\n");
+        return;
       case APIC_PROCESSOR_PRIORITY:
-        panic("Local APIC Processor Priority register unimplemented.\n");
-        break;
+        warn_once("Local APIC Processor Priority register unimplemented.\n");
+        return;
       case APIC_EOI:
         // Remove the interrupt that just completed from the local apic state.
         clearRegArrayBit(APIC_IN_SERVICE_BASE, ISRV);
@@ -522,8 +525,8 @@ X86ISA::Interrupts::setReg(ApicRegIndex reg, uint32_t val)
             switch (low.destShorthand) {
               case 0:
                 if (message.deliveryMode == delivery_mode::LowestPriority) {
-                    panic("Lowest priority delivery mode "
-                            "IPIs aren't implemented.\n");
+                    warn_once("Lowest priority delivery mode "
+                              "IPIs aren't implemented.\n");
                 }
                 if (message.destMode == 1) {
                     int dest = message.destination;
