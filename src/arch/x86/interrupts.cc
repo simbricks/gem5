@@ -318,7 +318,24 @@ X86ISA::Interrupts::setThreadContext(ThreadContext *_tc)
     BaseInterrupts::setThreadContext(_tc);
 
     // Update APIC ID to consider SMT threads
-    initialApicId = tc->contextId();
+    //initialApicId = tc->contextId();
+
+    // Determine number of bits needed across all CPUs to represent thread
+    // id in lower order bits of APIC id.
+    uint32_t maxThreadsPerCPU = 1;
+    for (auto t: sys->threads) {
+      BaseCPU *cpu = t->getCpuPtr();
+      if (cpu)
+        maxThreadsPerCPU = std::max(maxThreadsPerCPU, cpu->numContexts());
+    }
+    uint32_t threadBits = ceilLog2(maxThreadsPerCPU);
+
+    assert(tc->threadId() < maxThreadsPerCPU);
+    // Update APIC ID to consider SMT threads: lower order bits are thread id,
+    // higher order are CPU id.
+    initialApicId = ((uint32_t) tc->cpuId() << threadBits) |
+      ((uint32_t) tc->threadId());
+
     regs[APIC_ID] = (initialApicId << 24);
     pioAddr = x86LocalAPICAddress(initialApicId, 0);
 }
