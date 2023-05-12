@@ -83,7 +83,7 @@ class SouthBridge(SimObject):
     # IDE controller
     ide = X86IdeController(disks=[], pci_func=0, pci_dev=4, pci_bus=0)
 
-    def attachIO(self, bus, dma_ports):
+    def attachIO(self, bus, dma_ports, dma_bus=None, int_bus=None):
         # Route interrupt signals
         self.pic1.output = self.io_apic.inputs[0]
         self.pic2.output = self.pic1.inputs[2]
@@ -104,13 +104,18 @@ class SouthBridge(SimObject):
         self.dma1.pio = bus.mem_side_ports
         self.ide.pio = bus.mem_side_ports
         if dma_ports.count(self.ide.dma) == 0:
-            self.ide.dma = bus.cpu_side_ports
+            if dma_bus is None:
+                dma_bus = bus
+            self.ide.dma = dma_bus.cpu_side_ports
         self.keyboard.pio = bus.mem_side_ports
         self.pic1.pio = bus.mem_side_ports
         self.pic2.pio = bus.mem_side_ports
         self.pit.pio = bus.mem_side_ports
         self.speaker.pio = bus.mem_side_ports
         self.io_apic.pio = bus.mem_side_ports
-        self.io_apic.int_requestor = bus.cpu_side_ports
+
+        if int_bus is None:
+            int_bus = bus
+        self.io_apic.int_requestor = int_bus.cpu_side_ports
         self.msi.pio = bus.mem_side_ports
-        self.msi.int_requestor = bus.cpu_side_ports
+        self.msi.int_requestor = int_bus.cpu_side_ports
