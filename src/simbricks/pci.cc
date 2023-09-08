@@ -224,9 +224,9 @@ Device::writeAsync(PciPioCompl &comp)
     }
 
     DPRINTF(SimBricksPci, "simbricks-pci: sending write addr %x size %x "
-            "id %lu bar %d offs %x\n",
+            "id %lu bar %d offs %x posted %d\n",
             comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
-            bar, daddr);
+            bar, daddr, writesPosted);
 
     if (writeMsix(comp, daddr, bar))
         return;
@@ -240,7 +240,13 @@ Device::writeAsync(PciPioCompl &comp)
     write->bar = bar;
     memcpy((void *)write->data, comp.pkt->getPtr<uint8_t>(),
             comp.pkt->getSize());
-    adapter.outSend(h2d_msg, SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE);
+
+    if (writesPosted) {
+        comp.setDone();
+        adapter.outSend(h2d_msg, SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE_POSTED);
+    } else {
+        adapter.outSend(h2d_msg, SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE);
+    }
 }
 
 Tick
