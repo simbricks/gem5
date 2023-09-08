@@ -252,9 +252,13 @@ Device::writeAsync(PciPioCompl &comp)
     write->bar = bar;
     memcpy((void *)write->data, comp.pkt->getPtr<uint8_t>(),
             comp.pkt->getSize());
-    adapter.outSend(h2d_msg, writesPosted
-                                 ? SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE_POSTED
-                                 : SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE);
+    
+    if (writesPosted) {
+        comp.setDone();
+        adapter.outSend(h2d_msg, SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE_POSTED);
+    } else {
+        adapter.outSend(h2d_msg, SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE);
+    }
 }
 
 Tick
