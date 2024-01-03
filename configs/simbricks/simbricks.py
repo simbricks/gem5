@@ -424,6 +424,11 @@ def cmd_line_template():
         return open(args.command_line_file).read().strip()
     return None
 
+def param_cpus(cpus):
+    for cpu in cpus:
+        cpu.mmu.dtb.size = 1024
+        cpu.mmu.itb.size = 1024
+
 
 def build_system(np):
     cmdline = cmd_line_template()
@@ -498,6 +503,21 @@ def build_system(np):
         sys.iobridge = Bridge(delay="50ns", ranges=sys.mem_ranges)
         sys.iobridge.cpu_side_port = sys.iobus.mem_side_ports
         sys.iobridge.mem_side_port = sys.membus.cpu_side_ports
+
+    # parametrize caches a bit
+    sys.l2.assoc = 16
+    sys.l2.assoc = 16
+    for cpu in sys.cpu:
+        cpu.dcache.data_latency = 0
+        cpu.dcache.response_latency = 0
+        cpu.dcache.tag_latency = 0
+        cpu.dcache.tags.tag_latency = 0
+        cpu.icache.data_latency = 0
+        cpu.icache.response_latency = 0
+        cpu.icache.tag_latency = 0
+        cpu.icache.tags.tag_latency = 0
+
+    param_cpus(sys.cpu)
 
     # Sanity check
     if args.simpoint_profile:
@@ -610,4 +630,4 @@ if args.frame_capture:
     VncServer.frame_capture = True
 
 Simulation.setWorkCountOptions(sys, args)
-Simulation.run(args, root, sys, FutureClass)
+Simulation.run(args, root, sys, FutureClass, parametrize_cpus=param_cpus)
