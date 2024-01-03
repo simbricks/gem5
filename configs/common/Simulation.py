@@ -471,7 +471,7 @@ def repeatSwitch(testsys, repeat_switch_cpu_list, maxtick, switch_freq):
             return exit_event
 
 
-def run(options, root, testsys, cpu_class):
+def run(options, root, testsys, cpu_class, parametrize_cpus=None):
     if options.checkpoint_dir:
         cptdir = options.checkpoint_dir
     elif m5.options.outdir:
@@ -552,6 +552,8 @@ def run(options, root, testsys, cpu_class):
             CpuConfig.config_etrace(cpu_class, switch_cpus, options)
 
         testsys.switch_cpus = switch_cpus
+        if parametrize_cpus:
+            parametrize_cpus(testsys.switch_cpus)
         switch_cpu_list = [(testsys.cpu[i], switch_cpus[i]) for i in range(np)]
 
     if options.repeat_switch:
