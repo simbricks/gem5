@@ -474,6 +474,9 @@ def build_system(np):
         FutureClass
     ):
         sys.kvm_vm = KvmVM()
+        # disable relying on performance counters for kvm cpu
+        for cpu in sys.cpu:
+            cpu.usePerf = False
 
     CacheConfig.config_cache(args, sys)
     # if args.caches and args.l3cache and args.ddio_enabled:
