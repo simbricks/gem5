@@ -23,6 +23,7 @@
  */
 
 #include "simbricks/init_manager.hh"
+#include "simbricks/cur_tick.hh"
 
 #include <poll.h>
 
@@ -34,7 +35,7 @@ namespace base {
 
 static void sigusr1_handler(int dummy)
 {
-    std::cout << "main_time = " << curTick() << std::endl;
+    std::cout << "main_time = " << curTickAsSimbricksTs() << std::endl;
 }
 
 InitManager::InitManager()

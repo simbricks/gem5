@@ -52,6 +52,7 @@ if env['CONF']['USE_SIMBRICKS']:
     Source('mem.cc')
     Source('pci.cc')
     Source('pci_bar.cc')
+    Source('cur_tick.cc')
 
 DebugFlag('SimBricks')
 DebugFlag('SimBricksSync')
