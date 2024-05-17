@@ -28,6 +28,7 @@
 #include "debug/SimBricks.hh"
 #include "debug/SimBricksSync.hh"
 #include "sim/core.hh"
+#include "simbricks/cur_tick.hh"
 #include "simbricks/init_manager.hh"
 
 namespace gem5 {
@@ -72,12 +73,13 @@ Adapter::processInEvent()
     if (sync) {
         /* in sychronized mode we might need to wait till we get a message with
          * a timestamp allowing us to proceed */
-        Tick nextTs;
-        while ((nextTs = SimbricksBaseIfInTimestamp(&baseIf)) <= curTick()) {
-            poll();
+        uint64_t nextTs;
+        while ((nextTs = SimbricksBaseIfInTimestamp(&baseIf)) <=
+               curTickAsSimbricksTs()) {
+          poll();
         }
 
-        schedule(inEvent, nextTs);
+        schedule(inEvent, fromSimbricksTs(nextTs));
     } else {
         /* in non-synchronized mode just poll at fixed intervals */
         schedule(inEvent, curTick() + pollInterval);
@@ -87,9 +89,10 @@ Adapter::processInEvent()
 void
 Adapter::processOutSyncEvent()
 {
-    DPRINTF(SimBricks, "simbricks: sending sync message\n");
-    while (SimbricksBaseIfOutSync(&baseIf, curTick()));
-    schedule(outSyncEvent, SimbricksBaseIfOutNextSync(&baseIf));
+  DPRINTF(SimBricksSync, "simbricks: sending sync message for ts=%lu\n",
+          curTickAsSimbricksTs());
+  while (SimbricksBaseIfOutSync(&baseIf, curTickAsSimbricksTs()));
+  schedule(outSyncEvent, fromSimbricksTs(SimbricksBaseIfOutNextSync(&baseIf)));
 }
 
 void
@@ -182,6 +185,7 @@ Adapter::init()
 void
 Adapter::startup()
 {
+    setStartTick();
     // schedule first sync to be sent immediately
     if (sync)
         schedule(outSyncEvent, curTick());
@@ -193,7 +197,7 @@ bool
 Adapter::poll()
 {
     volatile union SimbricksProtoBaseMsg *msg =
-        SimbricksBaseIfInPoll(&baseIf, curTick());
+        SimbricksBaseIfInPoll(&baseIf, curTickAsSimbricksTs());
     if (!msg)
         return false;
 
