@@ -28,6 +28,7 @@
 #include "base/callback.hh"
 #include "sim/eventq.hh"
 #include "sim/sim_object.hh"
+#include "simbricks/cur_tick.hh"
 
 namespace gem5 {
 namespace simbricks {
@@ -90,7 +91,7 @@ class Adapter : public EventManager
     volatile union SimbricksProtoBaseMsg *outAlloc() {
         volatile union SimbricksProtoBaseMsg *msg;
         do {
-            msg = SimbricksBaseIfOutAlloc(&baseIf, curTick());
+            msg = SimbricksBaseIfOutAlloc(&baseIf, curTickAsSimbricksTs());
         } while (!msg);
         return msg;
     }
