@@ -470,14 +470,6 @@ def build_system(np):
         for i in range(np)
     ]
 
-    if ObjectList.is_kvm_cpu(TestCPUClass) or ObjectList.is_kvm_cpu(
-        FutureClass
-    ):
-        sys.kvm_vm = KvmVM()
-        # disable relying on performance counters for kvm cpu
-        for cpu in sys.cpu:
-            cpu.usePerf = False
-
     CacheConfig.config_cache(args, sys)
     # if args.caches and args.l3cache and args.ddio_enabled:
     #     # By default the IOCache runs at the system clock
@@ -561,6 +553,20 @@ def build_system(np):
 
     MemConfig.config_mem(args, sys)
 
+    if ObjectList.is_kvm_cpu(TestCPUClass
+                            ) or ObjectList.is_kvm_cpu(FutureClass):
+        for i, cpu in enumerate(sys.cpu):
+            # Disable relying on performance counters for kvm cpu
+            cpu.usePerf = False
+            # Child objects usually inherit the parent's event queue. Override
+            # that and use the same event queue for all devices.
+            for obj in cpu.descendants():
+                obj.eventq_index = 0
+            cpu.eventq_index = i + 1
+        # Make all SimBricks devices still live in the main event queue
+        sys.pc.eventq_index = 0
+        sys.kvm_vm = KvmVM()
+
     return sys
 
 
@@ -625,6 +631,10 @@ bm = [
 np = args.num_cpus
 sys = build_system(np)
 root = Root(full_system=True, system=sys)
+# Required for running kvm on multiple host cores. Uses gem5's parallel event
+# queue feature.
+if ObjectList.is_kvm_cpu(TestCPUClass) or ObjectList.is_kvm_cpu(FutureClass):
+    root.sim_quantum = int(1e8)  # 100 us
 
 if args.timesync:
     root.time_sync_enable = True
