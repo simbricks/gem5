@@ -41,15 +41,17 @@
 Import('*')
 
 SimObject('Serial.py', sim_objects=['SerialDevice', 'SerialNullDevice'])
-SimObject('Terminal.py', sim_objects=['Terminal'], enums=['TerminalDump'])
+SimObject('Terminal.py', sim_objects=['Terminal', 'TerminalBuffered'], enums=['TerminalDump'])
 SimObject('Uart.py', sim_objects=['Uart', 'SimpleUart', 'Uart8250'])
 
 Source('serial.cc')
 Source('simple.cc')
 Source('terminal.cc')
+Source('terminal_buffered.cc')
 Source('uart.cc')
 Source('uart8250.cc')
 
 DebugFlag('Terminal')
 DebugFlag('TerminalVerbose')
+DebugFlag('TerminalBuffered')
 DebugFlag('Uart')
