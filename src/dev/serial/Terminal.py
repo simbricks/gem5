@@ -55,3 +55,11 @@ class Terminal(SerialDevice):
     outfile = Param.TerminalDump(
         "file", "Selects if and where the terminal is dumping its output"
     )
+
+class TerminalBuffered(Terminal):
+    type = "TerminalBuffered"
+    cxx_header = "dev/serial/terminal_buffered.hh"
+    cxx_class = "gem5::TerminalBuffered"
+
+    flush_chars = Param.String("\n", "Characters that will cause a flush.")
+    prefix = Param.String("", "Prefix output lines with with this string.")
