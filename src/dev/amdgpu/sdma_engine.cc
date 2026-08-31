@@ -33,6 +33,7 @@
 
 #include "arch/amdgpu/vega/pagetable_walker.hh"
 #include "arch/generic/mmu.hh"
+#include "base/logging.hh"
 #include "debug/SDMAData.hh"
 #include "debug/SDMAEngine.hh"
 #include "dev/amdgpu/interrupt_handler.hh"
@@ -1618,7 +1619,17 @@ void
 SDMAEngine::setGfxSize(uint32_t data)
 {
     uint32_t rb_size = bits(data, 6, 1);
-    assert(rb_size >= 6 && rb_size <= 62);
+    // The driver read-modify-writes RB_CNTL, and gem5 has no read path for
+    // SDMA registers at all -- AMDGPUDevice::writeMMIO dispatches into
+    // sdmaFunc but readMMIO has no matching branch, so the read returns zero.
+    // The driver therefore writes back a RB_CNTL whose RB_SIZE field is zero
+    // while bringing the ring down, which is not a size at all. Ignore it
+    // rather than asserting: a real size follows when the ring is programmed.
+    if (rb_size < 6 || rb_size > 62) {
+        warn_once("SDMA%d: ignoring RB_CNTL write with out-of-range RB_SIZE "
+                  "%d (data %#x)\n", id, rb_size, data);
+        return;
+    }
     gfx.size(1 << (rb_size + 2));
 }
 
