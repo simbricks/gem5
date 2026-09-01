@@ -23,47 +23,7 @@ from common import ObjectList
 from common.Caches import *
 from common import Options
 
-
-def malformedSimBricksUrl(s):
-    print("Error: SimBricks URL", s, "is malformed")
-    sys.exit(1)
-
-
-# Parse SimBricks "URLs" in the following format:
-# ADDR[ARGS]
-# ADDR = connect:UX_SOCKET_PATH |
-#        listen:UX_SOCKET_PATH:SHM_PATH
-# ARGS = :sync | :link_latency=XX | :sync_interval=XX
-def parseSimBricksUrl(s):
-    out = {"sync": False}
-    parts = s.split(":")
-    if len(parts) < 2:
-        malformedSimBricksUrl(s)
-
-    if parts[0] == "connect":
-        out["listen"] = False
-        out["uxsocket_path"] = parts[1]
-        parts = parts[2:]
-    elif parts[0] == "listen":
-        if len(parts) < 3:
-            malformedSimBricksUrl(s)
-        out["listen"] = True
-        out["uxsocket_path"] = parts[1]
-        out["shm_path"] = parts[2]
-        parts = parts[3:]
-    else:
-        malformedSimBricksUrl(s)
-
-    for p in parts:
-        if p == "sync":
-            out["sync"] = True
-        elif p.startswith("sync_interval="):
-            out["sync_tx_interval"] = p.split("=")[1]
-        elif p.startswith("latency="):
-            out["link_latency"] = p.split("=")[1]
-        else:
-            malformedSimBricksUrl(s)
-    return out
+from simbricks_url import parse_simbricks_url
 
 
 class CowIdeDisk(IdeDisk):
@@ -185,7 +145,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
 
         def add_simbricks_pci(self, url):
             print("adding simbricks pci:", url)
-            params = parseSimBricksUrl(url)
+            params = parse_simbricks_url(url)
             dev = SimBricksPci(
                 pci_dev=self._devid_next,
                 pci_func=0,
@@ -199,7 +159,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
 
         def add_simbricks_e1000_eth(self, url):
             print("adding simbricks eth:", url)
-            params = parseSimBricksUrl(url)
+            params = parse_simbricks_url(url)
 
             ethif = SimBricksEthernet(**params)
             setattr(self, "simbricks_ethif_" + str(self._num_simbricks), ethif)
@@ -222,7 +182,7 @@ def makeX86System(mem_mode, numCPUs=1, mdesc=None, workload=None, Ruby=False):
                 f"adding simbricks mem: size={size} addr={addr} as={as_id} "
                 f"url={url}"
             )
-            params = parseSimBricksUrl(url)
+            params = parse_simbricks_url(url)
             params["size"] = size
             params["base_address"] = addr
             params["static_as_id"] = as_id
