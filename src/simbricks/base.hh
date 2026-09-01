@@ -73,8 +73,22 @@ class Adapter : public EventManager
         pollInterval = i;
     }
 
+    /**
+     * Open the socket. Opening it early lets peers and the orchestration find
+     * it at the usual time, even for an adapter whose intro is only known
+     * once the rest of the system is set up.
+     */
     void connect(const std::string &sock_path);
     void listen(const std::string &sock_path, const std::string &shm_path);
+
+    /**
+     * Join the initialization handshake, once introOutPrepare() can be
+     * answered. Only registered adapters make progress while another one
+     * blocks in waitReady(), so register no later than initState(), which
+     * still runs before any adapter's startup(). Later than that can hang.
+     */
+    void registerInit();
+
     void init();
     void startup();
 

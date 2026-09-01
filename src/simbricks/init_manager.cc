@@ -27,7 +27,9 @@
 
 #include <poll.h>
 
+#include <cerrno>
 #include <csignal>
+#include <cstring>
 
 namespace gem5 {
 namespace simbricks {
@@ -130,9 +132,14 @@ InitManager::processEvents()
     if (i == 0)
         return;
 
-    int ret = poll(pfds, i, -1);
+    /* gem5 arms async I/O on its own listening sockets, so a connection to an
+       unrelated listener (e.g. terminal) triggers a signal and EINTR. */
+    int ret;
+    do {
+        ret = poll(pfds, i, -1);
+    } while (ret < 0 && errno == EINTR);
     if (ret < 0)
-        panic("poll failed");
+        panic("poll failed: %s", strerror(errno));
 
     const unsigned max_handshake = 4096;
     std::vector<uint8_t> handshake(max_handshake);

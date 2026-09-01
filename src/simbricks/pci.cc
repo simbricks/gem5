@@ -52,6 +52,7 @@ Device::Device(const Params &p)
         adapter.listen(p.uxsocket_path, p.shm_path);
     else
         adapter.connect(p.uxsocket_path);
+    adapter.registerInit();
 }
 
 Device::~Device()
