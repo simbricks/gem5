@@ -148,10 +148,6 @@ Adapter::connect(const std::string &sock_path)
 
     if (SimbricksBaseIfConnect(&baseIf))
         panic("connecting failed");
-
-    // register this adapter for the rest of the initialization
-    // see init_manager.hh for rationale
-    InitManager::get().registerAdapter(*this);
 }
 
 void
@@ -169,7 +165,11 @@ Adapter::listen(const std::string &sock_path, const std::string &shm_path)
         panic("listening failed");
 
     isListen = true;
+}
 
+void
+Adapter::registerInit()
+{
     // register this adapter for the rest of the initialization
     // see init_manager.hh for rationale
     InitManager::get().registerAdapter(*this);

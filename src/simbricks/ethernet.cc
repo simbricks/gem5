@@ -52,6 +52,7 @@ Adapter::Adapter(const Params &p)
         adapter.listen(p.uxsocket_path, p.shm_path);
     else
         adapter.connect(p.uxsocket_path);
+    adapter.registerInit();
 }
 
 Adapter::~Adapter()
