@@ -39,8 +39,8 @@ with gem5_scons.Configure(main) as conf:
 
     conf.env['CONF']['HAVE_SIMBRICKS'] = \
             conf.CheckLibWithHeader('simbricks', 'simbricks/base/if.h', 'C',
-                                    ('struct SimbricksBaseIfParams p;'
-                                     ' SimbricksBaseIfDefaultParams(&p);'))
+                                    call=('struct SimbricksBaseIfParams p;'
+                                          ' SimbricksBaseIfDefaultParams(&p);'))
 
     if conf.env['CONF']['HAVE_SIMBRICKS']:
         conf.env.TagImplies('simbricks', 'gem5 lib')
