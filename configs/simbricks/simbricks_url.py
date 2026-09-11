@@ -20,11 +20,17 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""Parsing of the SimBricks "URLs" the config scripts here take.
+"""Parsing of the SimBricks parameters "URLs" the config scripts here take.
 
-    ADDR[:ARGS]
+    ADDR:SYNC[ARGS]
     ADDR = connect:UX_SOCKET_PATH | listen:UX_SOCKET_PATH:SHM_PATH
-    ARGS = sync | latency=XX | sync_interval=XX
+    SYNC = sync=<true|false>
+    ARGS = :latency=XX | :sync_interval=XX
+
+This is the format the SimBricks orchestration framework generates
+(`Simulator.get_parameters_url`) and the SimBricks C library parses
+(lib/simbricks/parser). By convention the time intervals in it are plain
+decimal picosecond values without a unit suffix.
 
 The result is a dict of SimBricks adapter parameters, ready to be passed to
 any of the SimBricks SimObjects.
@@ -33,39 +39,57 @@ any of the SimBricks SimObjects.
 import sys
 
 
-def malformed_url(s):
-    print("Error: SimBricks URL", s, "is malformed")
+def malformed_url(s, why):
+    print(f"Error: SimBricks URL {s} is malformed: {why}")
     sys.exit(1)
 
 
+def parse_picoseconds(s, key, value):
+    """A plain picosecond count from the URL, as a gem5 Latency string."""
+    if not value.isdecimal():
+        malformed_url(s, f"{key} must be a plain picosecond value, not '{value}'")
+    return f"{value}ps"
+
+
 def parse_simbricks_url(s):
-    """Turn a SimBricks URL into adapter parameters."""
-    out = {"sync": False}
+    """Turn a SimBricks parameters URL into adapter parameters."""
+    out = {}
     parts = s.split(":")
-    if len(parts) < 2:
-        malformed_url(s)
 
     if parts[0] == "connect":
+        if len(parts) < 2 or not parts[1]:
+            malformed_url(s, "connect needs a socket path")
         out["listen"] = False
         out["uxsocket_path"] = parts[1]
         parts = parts[2:]
     elif parts[0] == "listen":
-        if len(parts) < 3:
-            malformed_url(s)
+        if len(parts) < 3 or not parts[1] or not parts[2]:
+            malformed_url(s, "listen needs a socket path and a shm path")
         out["listen"] = True
         out["uxsocket_path"] = parts[1]
         out["shm_path"] = parts[2]
         parts = parts[3:]
     else:
-        malformed_url(s)
+        malformed_url(s, "must start with connect: or listen:")
 
-    for p in parts:
-        if p == "sync":
-            out["sync"] = True
-        elif p.startswith("sync_interval="):
-            out["sync_tx_interval"] = p.split("=")[1]
-        elif p.startswith("latency="):
-            out["link_latency"] = p.split("=")[1]
+    if not parts:
+        malformed_url(s, "sync parameter is missing")
+    key, _, value = parts[0].partition("=")
+    if key != "sync":
+        malformed_url(s, "sync=<true|false> must follow the address")
+    if value == "true":
+        out["sync"] = True
+    elif value == "false":
+        out["sync"] = False
+    else:
+        malformed_url(s, f"sync must be true or false, not '{value}'")
+
+    for p in parts[1:]:
+        key, _, value = p.partition("=")
+        if key == "latency":
+            out["link_latency"] = parse_picoseconds(s, key, value)
+        elif key == "sync_interval":
+            out["sync_tx_interval"] = parse_picoseconds(s, key, value)
         else:
-            malformed_url(s)
+            malformed_url(s, f"unknown parameter '{p}'")
     return out
