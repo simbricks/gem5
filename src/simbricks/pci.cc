@@ -26,6 +26,7 @@
 #include <simbricks/pci.hh>
 
 #include "base/trace.hh"
+#include "simbricks/cpu_trace.hh"
 
 namespace gem5 {
 namespace simbricks {
@@ -196,9 +197,9 @@ Device::readAsync(PciPioCompl &comp)
     }
 
     DPRINTF(SimBricksPci, "simbricks-pci: sending read addr %x size %x "
-            "id %lu bar %d offs %x\n",
+            "id %lu bar %d offs %x cpu %d pc %x\n",
             comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
-            bar, daddr);
+            bar, daddr, reqContextId(comp.pkt), reqPC(comp.pkt));
 
     if (readMsix(comp, daddr, bar))
         return;
@@ -224,9 +225,10 @@ Device::writeAsync(PciPioCompl &comp)
     }
 
     DPRINTF(SimBricksPci, "simbricks-pci: sending write addr %x size %x "
-            "id %lu bar %d offs %x posted %d\n",
+            "id %lu bar %d offs %x posted %d cpu %d pc %x\n",
             comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
-            bar, daddr, writesPosted);
+            bar, daddr, writesPosted, reqContextId(comp.pkt),
+            reqPC(comp.pkt));
 
     if (writeMsix(comp, daddr, bar))
         return;
@@ -462,7 +464,9 @@ Device::msi_signal(uint16_t vec)
 {
     DMACompl *dc;
 
-    DPRINTF(SimBricksPci, "simbricks-pci: received MSI intr vec %u\n", vec);
+    DPRINTF(SimBricksPci, "simbricks-pci: received MSI intr vec %u "
+            "apic vec %u dest %u\n", vec, msiApicVector(msicap.md),
+            msiApicDest(msicap.ma));
 
     if ((msicap.mc & 0x1) != 0 &&
             ((msicap.mmask & (1 << vec)) == 0))
@@ -487,7 +491,9 @@ Device::msix_signal(uint16_t vec)
     MSIXTable &te = msix_table[vec];
     MSIXPbaEntry &pe = msix_pba[vec / MSIXVECS_PER_PBA];
 
-    DPRINTF(SimBricksPci, "simbricks-pci: received MSI-X intr vec %u\n", vec);
+    DPRINTF(SimBricksPci, "simbricks-pci: received MSI-X intr vec %u "
+            "apic vec %u dest %u\n", vec, te.fields.msg_data & 0xff,
+            msiApicDest(te.fields.addr_lo));
 
     if ((te.fields.vec_ctrl & 1)) {
         warn("msix_signal(%u): TODO: masked", vec);

@@ -27,6 +27,7 @@
 #include <simbricks/mem.hh>
 
 #include "base/trace.hh"
+#include "simbricks/cpu_trace.hh"
 
 namespace gem5 {
 namespace simbricks {
@@ -113,8 +114,9 @@ void
 Adapter::readAsync(ReqCompl &comp)
 {
     DPRINTF(SimBricksMem, "simbricks-mem: sending read addr %x size %x "
-            "id %lu\n",
-            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
+            "id %lu cpu %d pc %x\n",
+            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
+            reqContextId(comp.pkt), reqPC(comp.pkt));
 
     /* Send read message */
     volatile union SimbricksProtoMemH2M *h2d_msg = adapter.outAlloc();
@@ -130,8 +132,9 @@ void
 Adapter::writeAsync(ReqCompl &comp)
 {
     DPRINTF(SimBricksMem,
-            "simbricks-mem: sending write addr %x size %x id %lu\n",
-            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp);
+            "simbricks-mem: sending write addr %x size %x id %lu cpu %d pc %x\n",
+            comp.pkt->getAddr(), comp.pkt->getSize(), (uint64_t) &comp,
+            reqContextId(comp.pkt), reqPC(comp.pkt));
 
     /* Send write message */
     volatile union SimbricksProtoMemH2M *h2d_msg = adapter.outAlloc();

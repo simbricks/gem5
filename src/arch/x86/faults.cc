@@ -49,6 +49,7 @@
 #include "base/trace.hh"
 #include "cpu/thread_context.hh"
 #include "debug/Faults.hh"
+#include "debug/SimBricksCpu.hh"
 #include "sim/full_system.hh"
 #include "sim/process.hh"
 
@@ -68,6 +69,20 @@ X86FaultBase::invoke(ThreadContext *tc, const StaticInstPtr &inst)
 
     PCState pc = tc->pcState().as<PCState>();
     DPRINTF(Faults, "RIP %#x: vector %d: %s\n", pc.pc(), vector, describe());
+    if (debug::SimBricksCpu) {
+        // kind: 0 exception, 1 external interrupt, 2 page fault
+        int kind = 0;
+        Addr addr = 0;
+        if (dynamic_cast<const ExternalInterrupt *>(this)) {
+            kind = 1;
+        } else if (auto pf = dynamic_cast<const PageFault *>(this)) {
+            kind = 2;
+            addr = pf->faultAddr();
+        }
+        DPRINTF(SimBricksCpu, "simbricks-cpu: fault cpu %d vec %d kind %d "
+                "pc %#x addr %#x err %#x\n", tc->contextId(), vector, kind,
+                pc.pc(), addr, errorCode == (uint64_t)(-1) ? 0 : errorCode);
+    }
     using namespace X86ISAInst::rom_labels;
     HandyM5Reg m5reg = tc->readMiscRegNoEffect(misc_reg::M5Reg);
     MicroPC entry;

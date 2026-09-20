@@ -296,6 +296,8 @@ class PageFault : public X86Fault
                 nullStaticInstPtr);
 
     virtual std::string describe() const;
+
+    Addr faultAddr() const { return addr; }
 };
 
 class X87FpExceptionPending : public X86Fault
