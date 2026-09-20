@@ -57,6 +57,7 @@
 #include "cpu/thread_context.hh"
 #include "debug/Loader.hh"
 #include "debug/Quiesce.hh"
+#include "debug/SimBricksCpu.hh"
 #include "debug/WorkItems.hh"
 #include "dev/net/dist_iface.hh"
 #include "mem/se_translating_port_proxy.hh"
@@ -486,6 +487,38 @@ triggerWorkloadEvent(ThreadContext *tc)
 {
     DPRINTF(PseudoInst, "pseudo_inst::triggerWorkloadEvent()\n");
     tc->getSystemPtr()->workload->event(tc);
+}
+
+//
+// simbricks-trace guest annotation (M5OP_RESERVED1). op: 0 event, 1 begin,
+// 2 end, 3 name (a = guest pointer to a NUL-terminated string naming id).
+// Logged under SimBricksCpu; a no-op otherwise.
+//
+void
+simbricksTrace(ThreadContext *tc, uint64_t op, uint64_t id, uint64_t a,
+               uint64_t b, uint64_t c)
+{
+    if (!debug::SimBricksCpu)
+        return;
+    if (op == 3) {
+        std::string str;
+        TranslatingPortProxy fs_proxy(tc);
+        SETranslatingPortProxy se_proxy(tc);
+        PortProxy &virt_proxy = FullSystem ? fs_proxy : se_proxy;
+        if (!virt_proxy.tryReadString(str, a))
+            str = "?";
+        DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: annot cpu %d "
+                 "op name id %d name %s\n", tc->contextId(), id, str);
+        return;
+    }
+    static const char *const ops[] = {"event", "begin", "end"};
+    if (op > 2) {
+        warn_once("simbricks-trace annotation with unknown op %d", op);
+        return;
+    }
+    DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: annot cpu %d "
+             "op %s id %d a %#x b %#x c %#x pc %#x\n", tc->contextId(),
+             ops[op], id, a, b, c, tc->pcState().instAddr());
 }
 
 //

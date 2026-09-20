@@ -114,6 +114,8 @@ void m5Syscall(ThreadContext *tc);
 void togglesync(ThreadContext *tc);
 void triggerWorkloadEvent(ThreadContext *tc);
 void m5Hypercall(ThreadContext *tc, uint64_t hypercall_id);
+void simbricksTrace(ThreadContext *tc, uint64_t op, uint64_t id, uint64_t a,
+                    uint64_t b, uint64_t c);
 
 /**
  * Execute a decoded M5 pseudo instruction
@@ -234,6 +236,10 @@ pseudoInstWork(ThreadContext *tc, uint8_t func, uint64_t &result)
         return true;
 
       case M5OP_RESERVED1:
+        // simbricks-trace annotation: sbtrace(op, id, a, b, c)
+        invokeSimcall<ABI>(tc, simbricksTrace);
+        return true;
+
       case M5OP_RESERVED2:
       case M5OP_RESERVED3:
       case M5OP_RESERVED4:
