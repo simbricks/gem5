@@ -287,7 +287,11 @@ Tracer::hookHit(unsigned id, ThreadContext *tc)
                   hook.symbol);
         return;
     }
-    // Fires when the callee returns: same thread, stack pointer popped.
+    // Fires when the callee returns: stack pointer popped. A CPU that re-fetches
+    // the hooked instruction (icache miss) services the PC event again; one
+    // return hook per pending call is enough.
+    if (!pendingRets.insert(std::make_pair(ret, sp + 8)).second)
+        return;
     new RetHookEvent(system, *this, id, ret, tc->contextId(), sp + 8);
 }
 
@@ -300,6 +304,7 @@ Tracer::retHookHit(unsigned id, ThreadContext *tc, Addr pc)
     line(*this, "simbricks-cpu: hookret id %d cpu %d pc %#x ret %#x sp %#x\n",
          id, tc->contextId(), pc, tc->getReg(X86ISA::int_reg::Rax),
          tc->getReg(X86ISA::int_reg::Rsp));
+    pendingRets.erase(std::make_pair(pc, (Addr)tc->getReg(X86ISA::int_reg::Rsp)));
 }
 
 void
