@@ -186,6 +186,9 @@ void
 Adapter::startup()
 {
     setStartTick();
+    // SimBricks timestamps are relative to this tick (non-zero after a checkpoint restore);
+    // logged unconditionally so the trace collector can align the debug log's ticks
+    DPRINTFN("simbricks: start tick %lu\n", curTick());
     // schedule first sync to be sent immediately
     if (sync)
         schedule(outSyncEvent, curTick());
