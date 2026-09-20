@@ -54,6 +54,9 @@ if env['CONF']['USE_SIMBRICKS']:
     Source('pci_bar.cc')
     Source('pci_host.cc')
     Source('cur_tick.cc')
+    if env['CONF']['USE_X86_ISA']:
+        SimObject('SimBricksTracer.py', sim_objects=['SimBricksTracer'])
+        Source('tracer.cc')
 
 DebugFlag('SimBricks')
 DebugFlag('SimBricksSync')
@@ -61,5 +64,6 @@ DebugFlag('SimBricksEthernet')
 DebugFlag('SimBricksMem')
 DebugFlag('SimBricksPci')
 DebugFlag('SimBricksPciHost')
+DebugFlag('SimBricksCpu', 'CPU/software events for simbricks-trace')
 CompoundFlag('SimBricksAll', [ 'SimBricks', 'SimBricksSync',
     'SimBricksEthernet', 'SimBricksMem', 'SimBricksPci', 'SimBricksPciHost'])

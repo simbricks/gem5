@@ -38,6 +38,7 @@
 #include "cpu/base.hh"
 #include "cpu/thread_context.hh"
 #include "debug/MatRegs.hh"
+#include "debug/SimBricksCpu.hh"
 #include "debug/X86.hh"
 #include "params/X86ISA.hh"
 #include "sim/serialize.hh"
@@ -338,6 +339,10 @@ ISA::setMiscReg(RegIndex idx, RegVal val)
       case misc_reg::Cr2:
         break;
       case misc_reg::Cr3:
+        // Architectural write (O3 defers misc reg writes to commit), so the
+        // address space switch logged here is never speculative.
+        DPRINTF(SimBricksCpu, "simbricks-cpu: cr3 cpu %d new %#x old %#x\n",
+                tc->contextId(), val, regVal[idx]);
         static_cast<MMU *>(tc->getMMUPtr())->flushNonGlobal();
         break;
       case misc_reg::Cr4:

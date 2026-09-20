@@ -57,6 +57,7 @@
 #include "arch/x86/regs/misc.hh"
 #include "cpu/base.hh"
 #include "debug/LocalApic.hh"
+#include "debug/SimBricksCpu.hh"
 #include "dev/x86/i82094aa.hh"
 #include "dev/x86/pc.hh"
 #include "dev/x86/south_bridge.hh"
@@ -228,6 +229,8 @@ void
 X86ISA::Interrupts::requestInterrupt(uint8_t vector,
         uint8_t deliveryMode, bool level)
 {
+    DPRINTF(SimBricksCpu, "simbricks-cpu: intr.request cpu %d vec %d mode %d\n",
+            tc ? tc->contextId() : -1, vector, deliveryMode);
     /*
      * Fixed and lowest-priority delivery mode interrupts are handled
      * using the IRR/ISR registers, checking against the TPR, etc.
@@ -772,6 +775,8 @@ X86ISA::Interrupts::updateIntrInfo()
         pendingExtInt = false;
     } else {
         DPRINTF(LocalApic, "Interrupt %d sent to core.\n", IRRV);
+        DPRINTF(SimBricksCpu, "simbricks-cpu: intr.deliver cpu %d vec %d\n",
+                tc ? tc->contextId() : -1, IRRV);
         // Mark the interrupt as "in service".
         ISRV = IRRV;
         setRegArrayBit(APIC_IN_SERVICE_BASE, ISRV);
