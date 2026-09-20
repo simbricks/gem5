@@ -144,6 +144,8 @@ class Tracer : public trace::InstTracer
     std::vector<HookSpec> hooks;
     std::vector<PCEvent *> garbage;
     EventFunctionWrapper sweepEvent;
+    std::set<std::pair<Addr, Addr>> pendingRets;
+    /* (return address, stack pointer) of the return hooks in flight. */
 
     /* Systems whose hooks are installed: every CPU carries a tracer with
      * the same hook list, but the hooks must be scheduled only once. */
