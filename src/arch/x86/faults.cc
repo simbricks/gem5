@@ -47,6 +47,7 @@
 #include "arch/x86/regs/misc.hh"
 #include "base/loader/symtab.hh"
 #include "base/trace.hh"
+#include "cpu/base.hh"
 #include "cpu/thread_context.hh"
 #include "debug/Faults.hh"
 #include "debug/SimBricksCpu.hh"
@@ -79,9 +80,13 @@ X86FaultBase::invoke(ThreadContext *tc, const StaticInstPtr &inst)
             kind = 2;
             addr = pf->faultAddr();
         }
-        DPRINTF(SimBricksCpu, "simbricks-cpu: fault cpu %d vec %d kind %d "
-                "pc %#x addr %#x err %#x\n", tc->contextId(), vector, kind,
-                pc.pc(), addr, errorCode == (uint64_t)(-1) ? 0 : errorCode);
+        // sp is the interrupted context's stack pointer, restored by the
+        // matching iret; that pairs the two even across CPU migration.
+        DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: fault cpu %d "
+                 "vec %d kind %d pc %#x sp %#x addr %#x err %#x\n",
+                 tc->contextId(), vector, kind, pc.pc(),
+                 tc->getReg(int_reg::Rsp), addr,
+                 errorCode == (uint64_t)(-1) ? 0 : errorCode);
     }
     using namespace X86ISAInst::rom_labels;
     HandyM5Reg m5reg = tc->readMiscRegNoEffect(misc_reg::M5Reg);
