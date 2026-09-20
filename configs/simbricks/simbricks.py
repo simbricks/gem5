@@ -424,10 +424,29 @@ def cmd_line_template():
         return open(args.command_line_file).read().strip()
     return None
 
+def sbtrace_hooks():
+    """Kernel function hooks for the SimBricksTracer: --sbtrace-hook specs
+    ('symbol[:reg,reg,...][:ret]') and the lines of the --sbtrace-hooks file
+    ('#' comments)."""
+    hooks = list(args.sbtrace_hook)
+    if args.sbtrace_hooks:
+        with open(args.sbtrace_hooks) as f:
+            for line in f:
+                line = line.split("#", 1)[0].strip()
+                if line:
+                    hooks.append(line)
+    return hooks
+
+
 def param_cpus(cpus):
+    hooks = sbtrace_hooks()
     for cpu in cpus:
         cpu.mmu.dtb.size = 1024
         cpu.mmu.itb.size = 1024
+        # Software events for simbricks-trace; silent unless the
+        # SimBricksCpu debug flag is enabled.
+        if not ObjectList.is_kvm_cpu(type(cpu)):
+            cpu.tracer = SimBricksTracer(hooks=hooks)
 
 
 def build_system(np):
@@ -596,6 +615,21 @@ parser.add_argument(
     type=str,
     default=[],
     help="Simbricks Mem blocks to add: SIZE@ADDR@ASID@URL",
+)
+parser.add_argument(
+    "--sbtrace-hook",
+    action="append",
+    type=str,
+    default=[],
+    help="kernel function hook for the SimBricksTracer: "
+    "'symbol[:reg,reg,...][:ret]' (repeatable)",
+)
+parser.add_argument(
+    "--sbtrace-hooks",
+    action="store",
+    type=str,
+    default=None,
+    help="file with one SimBricksTracer hook per line",
 )
 parser.add_argument(
     "--command-line-append",
