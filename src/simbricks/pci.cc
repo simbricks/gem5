@@ -343,7 +343,11 @@ Device::DMACompl::done()
 void
 Device::dmaDone(DMACompl &comp)
 {
-    DPRINTF(SimBricksPci, "simbricks-pci: completed DMA id %u\n", comp.id);
+    if (comp.ty == DMACompl::MSI) {
+        DPRINTF(SimBricksPci, "simbricks-pci: MSI write delivered\n");
+    } else {
+        DPRINTF(SimBricksPci, "simbricks-pci: completed DMA id %u\n", comp.id);
+    }
 
     if (comp.ty == DMACompl::READ) {
         volatile union SimbricksProtoPcieH2D *msg = adapter.outAlloc();
