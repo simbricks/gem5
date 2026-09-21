@@ -55,6 +55,12 @@
 namespace gem5
 {
 
+namespace simbricks
+{
+/** Page table base (x86 CR3) of @tc for the process-name annotation. */
+uint64_t pageTableBase(ThreadContext *tc);
+} // namespace simbricks
+
 namespace pseudo_inst
 {
 

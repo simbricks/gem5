@@ -36,6 +36,7 @@
 #include "debug/SimBricksCpu.hh"
 #include "mem/translating_port_proxy.hh"
 #include "sim/cur_tick.hh"
+#include "sim/pseudo_inst.hh"
 #include "sim/system.hh"
 
 namespace gem5 {
@@ -322,6 +323,12 @@ Tracer::sweep()
     for (PCEvent *ev : garbage)
         delete ev;  // removes itself from the scope
     garbage.clear();
+}
+
+uint64_t
+pageTableBase(ThreadContext *tc)
+{
+    return tc->readMiscRegNoEffect(X86ISA::misc_reg::Cr3);
 }
 
 } // namespace simbricks
