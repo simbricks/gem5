@@ -144,7 +144,7 @@ InitManager::processEvents()
     const unsigned max_handshake = 4096;
     std::vector<uint8_t> handshake(max_handshake);
 
-    for (int k = 0; k < ret; k++) {
+    for (nfds_t k = 0; k < i; k++) {
         Adapter *a = as[k];
         if (pfds[k].revents == 0)
             continue;
