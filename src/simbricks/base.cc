@@ -70,13 +70,6 @@ Adapter::processInEvent()
     /* run what we can */
     while (poll());
 
-    if (SimbricksBaseIfInTerminated(&baseIf)) {
-        /* the peer is gone: nothing more will arrive, and its queue no longer
-         * bounds our time; stop polling instead of waiting forever */
-        warn("simbricks: peer terminated, no longer polling %s", name());
-        return;
-    }
-
     if (sync) {
         /* in sychronized mode we might need to wait till we get a message with
          * a timestamp allowing us to proceed */
@@ -86,8 +79,19 @@ Adapter::processInEvent()
           poll();
         }
 
+        if (SimbricksBaseIfInTerminated(&baseIf)) {
+            /* the peer is gone (found by one of the polls above): nothing
+             * more arrives and its queue no longer bounds our time (nextTs is
+             * infinite); stop polling instead of waiting forever */
+            warn("simbricks: peer terminated, no longer polling %s", name());
+            return;
+        }
         schedule(inEvent, fromSimbricksTs(nextTs));
     } else {
+        if (SimbricksBaseIfInTerminated(&baseIf)) {
+            warn("simbricks: peer terminated, no longer polling %s", name());
+            return;
+        }
         /* in non-synchronized mode just poll at fixed intervals */
         schedule(inEvent, curTick() + pollInterval);
     }
