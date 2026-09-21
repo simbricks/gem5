@@ -70,6 +70,13 @@ Adapter::processInEvent()
     /* run what we can */
     while (poll());
 
+    if (SimbricksBaseIfInTerminated(&baseIf)) {
+        /* the peer is gone: nothing more will arrive, and its queue no longer
+         * bounds our time; stop polling instead of waiting forever */
+        warn("simbricks: peer terminated, no longer polling %s", name());
+        return;
+    }
+
     if (sync) {
         /* in sychronized mode we might need to wait till we get a message with
          * a timestamp allowing us to proceed */
@@ -92,6 +99,8 @@ Adapter::processOutSyncEvent()
   DPRINTF(SimBricksSync, "simbricks: sending sync message for ts=%lu\n",
           curTickAsSimbricksTs());
   while (SimbricksBaseIfOutSync(&baseIf, curTickAsSimbricksTs()));
+  if (SimbricksBaseIfInTerminated(&baseIf))
+      return;
   schedule(outSyncEvent, fromSimbricksTs(SimbricksBaseIfOutNextSync(&baseIf)));
 }
 
@@ -204,8 +213,10 @@ Adapter::poll()
     if (!msg)
         return false;
 
-    // don't pass sync messages to handle msg function
-    if (SimbricksBaseIfInType(&baseIf, msg) == SIMBRICKS_PROTO_MSG_TYPE_SYNC) {
+    // don't pass sync and terminate messages to handle msg function
+    uint8_t ty = SimbricksBaseIfInType(&baseIf, msg);
+    if (ty == SIMBRICKS_PROTO_MSG_TYPE_SYNC ||
+        ty == SIMBRICKS_PROTO_MSG_TYPE_TERMINATE) {
         inDone(msg);
         return true;
     }
