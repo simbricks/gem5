@@ -500,15 +500,29 @@ simbricksTrace(ThreadContext *tc, uint64_t op, uint64_t id, uint64_t a,
 {
     if (!debug::SimBricksCpu)
         return;
-    if (op == 3) {
+    if (op == 3 || op == 4 || op == 5) {
+        // ops carrying a guest string: 3 name (a = pointer), 4 process name
+        // (a = pointer), 5 phase (id = 1 begin / 0 end, a = pointer)
         std::string str;
         TranslatingPortProxy fs_proxy(tc);
         SETranslatingPortProxy se_proxy(tc);
         PortProxy &virt_proxy = FullSystem ? fs_proxy : se_proxy;
         if (!virt_proxy.tryReadString(str, a))
             str = "?";
-        DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: annot cpu %d "
-                 "op name id %d name %s\n", tc->contextId(), id, str);
+        if (op == 3) {
+            DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: annot "
+                     "cpu %d op name id %d name %s\n", tc->contextId(), id,
+                     str);
+        } else if (op == 4) {
+            uint64_t cr3 = gem5::simbricks::pageTableBase(tc);
+            DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: annot "
+                     "cpu %d op proc cr3 %#x name %s\n", tc->contextId(),
+                     cr3, str);
+        } else {
+            DPRINTFS(SimBricksCpu, tc->getCpuPtr(), "simbricks-cpu: annot "
+                     "cpu %d op phase %s name %s\n", tc->contextId(),
+                     id ? "begin" : "end", str);
+        }
         return;
     }
     static const char *const ops[] = {"event", "begin", "end"};
@@ -650,4 +664,16 @@ m5Hypercall(ThreadContext *tc, uint64_t hypercall_id)
 }
 
 } // namespace pseudo_inst
+namespace simbricks
+{
+
+// Overridden by the x86 tracer (src/simbricks/tracer.cc) with the CR3 of
+// @tc; ISAs without the tracer report 0.
+__attribute__((weak)) uint64_t
+pageTableBase(ThreadContext *tc)
+{
+    return 0;
+}
+
+} // namespace simbricks
 } // namespace gem5
