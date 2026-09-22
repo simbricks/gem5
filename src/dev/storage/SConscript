@@ -51,11 +51,12 @@ DebugFlag('IdeDisk')
 
 # Disk models
 SimObject('DiskImage.py', sim_objects=[
-    'DiskImage', 'RawDiskImage', 'CowDiskImage'])
+    'DiskImage', 'RawDiskImage', 'CowDiskImage', 'Qcow2DiskImage'])
 SimObject('SimpleDisk.py', sim_objects=['SimpleDisk'])
 
 Source('disk_image.cc')
 Source('qcow2_image.cc')
+Source('qcow2_disk_image.cc')
 Source('simple_disk.cc')
 
 GTest('qcow2_image.test', 'qcow2_image.test.cc', 'qcow2_image.cc')
@@ -64,6 +65,7 @@ DebugFlag('DiskImageRead')
 DebugFlag('DiskImageWrite')
 DebugFlag('SimpleDisk')
 DebugFlag('SimpleDiskData')
+DebugFlag('Qcow2')
 
 
 CompoundFlag('DiskImageAll', [ 'DiskImageRead', 'DiskImageWrite' ])
