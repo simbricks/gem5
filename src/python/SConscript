@@ -370,6 +370,7 @@ PySource('gem5.resources.client_api',
             'gem5/resources/client_api/client_query.py')
 PySource('gem5', 'gem5/gem5_default_config.py')
 PySource('gem5.utils', 'gem5/utils/__init__.py')
+PySource('gem5.utils', 'gem5/utils/disk_image.py')
 PySource('gem5.utils', 'gem5/utils/filelock.py')
 PySource('gem5.utils', 'gem5/utils/override.py')
 PySource('gem5.utils', 'gem5/utils/progress_bar.py')
