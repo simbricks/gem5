@@ -10,6 +10,7 @@ from m5.objects import *
 from m5.util import addToPath, fatal, warn, convert
 from m5.util.fdthelper import *
 from gem5.isas import ISA
+from gem5.utils.disk_image import disk_image_for
 #from gem5.runtime import get_runtime_isa
 
 addToPath("../")
@@ -26,18 +27,19 @@ from common import Options
 from simbricks_url import parse_simbricks_url
 
 
-class CowIdeDisk(IdeDisk):
-    image = CowDiskImage(child=RawDiskImage(read_only=True), read_only=False)
-
-    def childImage(self, ci):
-        self.image.child.image_file = ci
-
-
 def makeCowDisks(disk_paths):
     disks = []
     for disk_path in disk_paths:
-        disk = CowIdeDisk(driveID="device0")
-        disk.childImage(disk_path)
+        disk = IdeDisk(driveID="device0")
+        # Raw and qcow2 images are both accepted; for qcow2 the backing chain
+        # is resolved from the image headers. Either way the image is opened
+        # read-only and guest writes land in the CowDiskImage on top.
+        disk.image = CowDiskImage(
+            child=disk_image_for(
+                disk_path, backing_search_path=args.disk_backing_path
+            ),
+            read_only=False,
+        )
         disks.append(disk)
     return disks
 
@@ -555,6 +557,15 @@ parser.add_argument(
     type=str,
     default=[],
     help="Simbricks Mem blocks to add: SIZE@ADDR@ASID@URL",
+)
+parser.add_argument(
+    "--disk-backing-path",
+    action="append",
+    type=str,
+    default=[],
+    help="Directory searched by basename when a backing file recorded in a "
+    "qcow2 image header does not resolve. May be given multiple times; "
+    "applies to every disk image.",
 )
 parser.add_argument(
     "--command-line-append",
