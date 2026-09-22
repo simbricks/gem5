@@ -50,3 +50,24 @@ class CowDiskImage(DiskImage):
     child = Param.DiskImage(RawDiskImage(read_only=True), "child image")
     table_size = Param.Int(65536, "initial table size")
     image_file = ""
+
+
+class Qcow2DiskImage(DiskImage):
+    type = "Qcow2DiskImage"
+    cxx_header = "dev/storage/qcow2_disk_image.hh"
+    cxx_class = "gem5::Qcow2DiskImage"
+
+    # Read-only and expected be wrapped with a CowDiskImage for writes
+    read_only = True
+
+    backing_search_path = VectorParam.String(
+        [],
+        "Directories searched by basename when a backing file recorded in "
+        "an image header does not resolve",
+    )
+    l2_cache_size = Param.MemorySize(
+        "4MiB", "Total L2 table cache budget, shared across all chain layers"
+    )
+    max_chain_depth = Param.Int(
+        16, "Backing chain depth limit; exceeding it is a fatal error"
+    )
