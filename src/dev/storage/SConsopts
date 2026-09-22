@@ -1,18 +1,4 @@
-# -*- mode:python -*-
-
-# Copyright (c) 2015 ARM Limited
-# All rights reserved.
-#
-# The license below extends only to copyright in the software and shall
-# not be construed as granting a license to any other intellectual
-# property including but not limited to intellectual property relating
-# to a hardware implementation of the functionality of the software
-# licensed hereunder.  You may use the software subject to the license
-# terms below provided that you ensure that this notice is replicated
-# unmodified and in its entirety in all distributions of the software,
-# modified or unmodified, in source code or in binary form.
-#
-# Copyright (c) 2006 The Regents of The University of Michigan
+# Copyright (c) 2026 The Regents of the University of California
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,29 +26,21 @@
 
 Import('*')
 
-# Controllers
-SimObject('Ide.py', sim_objects=['IdeDisk', 'IdeController'], enums=['IdeID'])
+from gem5_scons import warning
 
-Source('ide_ctrl.cc')
-Source('ide_disk.cc')
+import gem5_scons
 
-DebugFlag('IdeCtrl')
-DebugFlag('IdeDisk')
+with gem5_scons.Configure(main) as conf:
+    # libzstd is needed to read qcow2 images whose clusters are compressed
+    # with zstd rather than zlib. It is optional: without it, such images are
+    # rejected at open time with a clear message, and every other qcow2 image
+    # still works.
+    conf.env['CONF']['HAVE_LIBZSTD'] = bool(
+        conf.CheckLibWithHeader('zstd', 'zstd.h', 'C++',
+                                call='ZSTD_versionNumber();'))
 
-# Disk models
-SimObject('DiskImage.py', sim_objects=[
-    'DiskImage', 'RawDiskImage', 'CowDiskImage'])
-SimObject('SimpleDisk.py', sim_objects=['SimpleDisk'])
-
-Source('disk_image.cc')
-Source('qcow2_image.cc')
-Source('simple_disk.cc')
-
-DebugFlag('DiskImageRead')
-DebugFlag('DiskImageWrite')
-DebugFlag('SimpleDisk')
-DebugFlag('SimpleDiskData')
-
-
-CompoundFlag('DiskImageAll', [ 'DiskImageRead', 'DiskImageWrite' ])
-CompoundFlag('IdeAll', [ 'IdeCtrl', 'IdeDisk' ])
+    if not conf.env['CONF']['HAVE_LIBZSTD']:
+        warning("Header file <zstd.h> and/or libzstd not found.\n"
+                "This host has no zstd library.\n"
+                "Disabling zstd cluster decompression for qcow2 disk "
+                "images.")
