@@ -37,7 +37,8 @@ extern "C" {
 }
 
 Bar::Bar(const Params &p)
-    : PciBar(p)
+    : PciBar(p), lowerMem(nullptr), ty(BarNone), addr_raw(0),
+      prefetchable(false), dummy(false)
 {
 }
 
@@ -49,7 +50,11 @@ Bar::isIo() const
 
 bool Bar::isMem() const
 {
-    return ty == BarMem32 || ty == BarMem64L || ty == BarMem64H;
+    /* The upper half of a 64-bit BAR has no range of its own: the lower half
+     * covers the whole region. Reporting it as memory would register its
+     * empty [0, 0) range on the PCI bus, which AddrRange::isSubset takes for a
+     * wrap-around range covering every address. */
+    return ty == BarMem32 || ty == BarMem64L;
 }
 
 uint32_t
